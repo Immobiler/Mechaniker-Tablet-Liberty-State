@@ -1,0 +1,2728 @@
+<!-- app.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>COAST.NET</title>
+<link rel="stylesheet" href="PDDoc.css"/>
+</head>
+<body>
+<div class="app-layout" id="appLayout" style="display:none">
+<div class="topbar">
+  <div class="topbar-logo">COAST.NET</div>
+  <div class="topbar-user">
+    <span id="topCivId" class="badge badge-muted" style="font-family:monospace;letter-spacing:.1em"></span>
+    <span id="topJobBadge" class="badge badge-muted"></span>
+    <span id="topRangBadge" class="badge badge-accent"></span>
+    <span id="topUsername" style="color:var(--text2);font-size:.72rem"></span>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Abmelden</button>
+  </div>
+</div>
+<div class="tab-nav">
+  <button class="tab-btn active" id="tabAusweis" data-tab="ausweis" onclick="showTab('ausweis')">Mein Ausweis</button>
+  <button class="tab-btn" data-tab="citizen" onclick="showTab('citizen')">Bürger</button>
+  <button class="tab-btn" data-tab="documents" onclick="showTab('documents')">Dokumente</button>
+  <button class="tab-btn" data-tab="cars" id="tabCars" onclick="showTab('cars')">Fahrzeuge</button>
+  <button class="tab-btn" data-tab="lexikon" onclick="showTab('lexikon')">Lexikon</button>
+  <button class="tab-btn hidden" data-tab="ids" id="tabIds" onclick="showTab('ids')">Ausweise</button>
+  <button class="tab-btn hidden" data-tab="admin" id="tabAdmin" onclick="showTab('admin')">Admin</button>
+  <button class="tab-btn hidden" data-tab="livemap" id="tabLivemap" onclick="showTab('livemap');initLivemap()">Live-Karte</button>
+</div>
+<div class="tab-content active" id="tab-ausweis">
+  <div class="section-title" style="margin-bottom:24px">Mein Ausweis</div>
+  <div id="ausweisCard"></div>
+</div>
+<div class="tab-content" id="tab-citizen">
+  <div class="section-header">
+    <div class="section-title">Bürgerverwaltung</div>
+    <div class="section-actions">
+      <span class="badge badge-muted" id="citizenCount">0 Bürger</span>
+      <button class="btn-add-big" id="btnAddCitizen" onclick="openCitizenModal(null)">+</button>
+    </div>
+  </div>
+  <div class="search-bar"><span class="search-icon">&#x1F50D;</span><input type="text" id="citizenSearch" placeholder="Bürger suchen..." oninput="renderCitizens()"/></div>
+  <div class="card-list" id="citizenList"></div>
+</div>
+<div class="tab-content" id="tab-documents">
+  <div class="section-header">
+    <div class="section-title">Dokumente</div>
+    <div class="section-actions">
+      <span class="badge badge-muted" id="docCount">0 Dokumente</span>
+      <button class="btn btn-ghost btn-sm hidden" id="btnDocTypes" onclick="openDocTypesManager()" style="font-size:.6rem;letter-spacing:.1em">&#9881; Typen</button>
+      <button class="btn-add-big" onclick="openDocModal(null)">+</button>
+    </div>
+  </div>
+  <div class="search-bar"><span class="search-icon">&#x1F50D;</span><input type="text" id="docSearch" placeholder="Dokumente suchen..." oninput="renderDocs()"/></div>
+  <div class="card-list" id="docList"></div>
+</div>
+<div class="tab-content" id="tab-cars">
+  <div class="section-header">
+    <div class="section-title">Fahrzeugverwaltung</div>
+    <div class="section-actions">
+      <span class="badge badge-muted" id="carCount">0 Fahrzeuge</span>
+      <button class="btn-add-big" id="btnAddCar" onclick="openCarModal(null)">+</button>
+    </div>
+  </div>
+  <div class="search-bar"><span class="search-icon">&#x1F50D;</span><input type="text" id="carSearch" placeholder="Fahrzeuge suchen..." oninput="renderCars()"/></div>
+  <div class="card-list" id="carList"></div>
+</div>
+<div class="tab-content" id="tab-lexikon">
+  <div class="section-header">
+    <div class="section-title">Lexikon</div>
+    <div class="section-actions">
+      <button class="btn btn-primary btn-sm hidden" id="btnAddLexikon" onclick="openLexikonModal(null)">+ Eintrag</button>
+    </div>
+  </div>
+  <div class="search-bar"><span class="search-icon">&#x1F50D;</span><input type="text" id="lexikonSearch" placeholder="Lexikon durchsuchen..." oninput="renderLexikon()"/></div>
+  <div class="lexikon-grid" id="lexikonGrid"></div>
+</div>
+<div class="tab-content" id="tab-ids">
+  <div class="section-header">
+    <div class="section-title">Ausweise</div>
+    <div class="section-actions"><span class="badge badge-muted" id="idCount">0 IDs</span></div>
+  </div>
+  <div style="font-size:.72rem;color:var(--muted);margin-bottom:14px">Registrierte Accounts. Einreisebeamte können IDs Bürgern zuweisen.</div>
+  <div class="search-bar"><span class="search-icon">&#x1F50D;</span><input type="text" id="idSearch" placeholder="ID oder Name suchen..." oninput="renderIds()"/></div>
+  <div class="card-list" id="idList"></div>
+</div>
+<div class="tab-content" id="tab-admin">
+  <div class="section-title" style="margin-bottom:20px" id="adminTitle">Master-Verwaltung</div>
+  <div class="admin-grid" id="adminGrid">
+    <div class="admin-card master-only" onclick="adminSection('users')"><div class="admin-card-icon">&#x1F465;</div><div class="admin-card-label">Verwaltung</div><div class="admin-card-title">Benutzer &amp; Rechte</div></div>
+    <div class="admin-card" onclick="adminSection('jobs')"><div class="admin-card-icon">&#x1F4BC;</div><div class="admin-card-label">Verwaltung</div><div class="admin-card-title">Berufe &amp; Ränge</div></div>
+    <div class="admin-card master-only" onclick="adminSection('passwords')"><div class="admin-card-icon">&#x1F511;</div><div class="admin-card-label">Sicherheit</div><div class="admin-card-title">Alle Passwörter</div></div>
+    <div class="admin-card doc-type-card" onclick="openDocTypesManager()"><div class="admin-card-icon">&#x1F4CB;</div><div class="admin-card-label">Dokumente</div><div class="admin-card-title">Typen &amp; Vorlagen</div></div>
+    <div class="admin-card master-only" onclick="exportAllData()"><div class="admin-card-icon">&#x1F4BE;</div><div class="admin-card-label">System</div><div class="admin-card-title">Daten exportieren</div></div>
+    <div class="admin-card master-only" onclick="adminSection('audit')"><div class="admin-card-icon">&#x1F4CB;</div><div class="admin-card-label">System</div><div class="admin-card-title">Aktivitätslog</div></div>
+    <div class="admin-card master-only" onclick="adminSection('tokens')"><div class="admin-card-icon">&#x1F511;</div><div class="admin-card-label">FiveM</div><div class="admin-card-title">Registrierungs-Tokens</div></div>
+  </div>
+  <div id="adminContent"></div>
+</div>
+
+<div class="tab-content" id="tab-livemap" style="padding:0;">
+  <iframe id="livemapFrame" src="livemap.html" style="width:100%;flex:1;border:none;display:block;"></iframe>
+</div>
+
+<!-- Footer -->
+<div style="position:fixed;bottom:10px;left:20px;font-size:.65rem;color:var(--muted);opacity:.6;font-family:'IBM Plex Mono',monospace;z-index:50;">
+  Made by Nibi
+</div>
+
+</div>
+
+<div class="modal-backdrop" id="mCitizen"><div class="modal">
+  <div class="modal-header"><div class="modal-title" id="mCitizenTitle">Person hinzufügen</div><button class="modal-close" onclick="closeM('mCitizen')">X</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="cEditId"/>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="cName" placeholder="Max Mustermann"/></div>
+      <div class="form-group"><label class="form-label">Geburtsdatum</label><input class="form-input" id="cBirth" type="date"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Größe (cm)</label><input class="form-input" id="cHeight" type="number" placeholder="175"/></div>
+      <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="cTelefon" placeholder="+49 123"/></div>
+    </div>
+    <hr class="detail-divider"/>
+    <div class="form-group"><label class="form-label">Verknüpfter Account</label>
+      <select class="form-select" id="cLinked"><option value="">-- kein Account --</option></select>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mCitizen')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveCitizen()">Speichern</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mCitizenDetail"><div class="modal modal-lg">
+  <div class="modal-header"><div class="modal-title" id="mCDTitle"></div><button class="modal-close" onclick="closeM('mCitizenDetail')">X</button></div>
+  <div class="modal-body" id="mCDBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost hidden" id="mCDEditBtn">Bearbeiten</button>
+    <button class="btn btn-danger hidden" id="mCDDelBtn">Löschen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mDoc"><div class="modal modal-xl">
+  <div class="modal-header"><div class="modal-title" id="mDocTitle">Dokument erstellen</div><button class="modal-close" onclick="closeM('mDoc')">X</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="dEditId"/>
+    <input type="hidden" id="dBlockedRanks" value="{}"/>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Typ *</label>
+        <select class="form-select" id="dType"><option>Strafakte</option><option>Strafanzeige</option><option>Bußgeldbescheid</option><option>Haftbefehl</option><option>Entscheidung</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Bürger zuweisen</label>
+        <select class="form-select" id="dBürger"><option value="">-- keine --</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Titel *</label><input class="form-input" id="dTitle" placeholder="z.B. Einbruch Hauptstraße 14"/></div>
+    <div class="form-group" id="dHeaderGrp">
+      <label class="form-label" style="color:var(--danger)">Pflichttext (nicht editierbar)</label>
+      <textarea class="form-textarea" id="dHeader" readonly style="height:60px;resize:none;background:rgba(190,6,6,.06);border-color:rgba(190,6,6,.3);color:var(--text2);font-family:monospace;font-size:.78rem;cursor:default;display:none"></textarea>
+    </div>
+    <div class="form-group"><label class="form-label">Inhalt (Freitext)</label><textarea class="form-textarea" id="dContent" style="height:200px;resize:vertical" placeholder="Dokumentinhalt eingeben..."></textarea></div>
+    <div class="form-group"><label class="form-label">Interne Notiz</label><input class="form-input" id="dNote" placeholder="Interne Notiz..."/></div>
+    <hr class="detail-divider"/>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Sichtbarkeitsstufe (1-5) *</label>
+        <select class="form-select" id="dLevel">
+          <option value="1">Stufe 1 – Öffentlich</option>
+          <option value="2" selected>Stufe 2 – Beamte</option>
+          <option value="3">Stufe 3 – Mittlere Ränge</option>
+          <option value="4">Stufe 4 – Hohe Ränge</option>
+          <option value="5">Stufe 5 – Höchste Ränge</option>
+        </select>
+        <div class="form-hint">Bestimmt, wer das Dokument sehen kann.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Weitere Personen</label>
+        <div id="dAccessList" style="padding:8px;background:var(--panel2);border:1px solid var(--border);max-height:120px;overflow-y:auto;font-size:.75rem"></div>
+        <button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px;width:100%" onclick="openAddAccess()">+ Person hinzufügen</button>
+        <div class="form-hint">Personen mit zusätzlichem Zugriff, auch wenn ihr Rang unter der Ebene liegt.</div>
+      </div>
+    </div>
+    <hr class="detail-divider"/>
+    <button type="button" class="btn btn-ghost btn-sm" style="width:100%" onclick="openDocAccessModal()" id="dAccessRulesBtn">⚙ Rang-Sichtbarkeit einstellen</button>
+    <div class="form-hint" style="margin-top:4px">Bestimmte Ränge vom Zugriff auf dieses Dokument ausschließen.</div>
+    <div style="margin-top:10px">
+      <button type="button" class="btn btn-ghost btn-sm" style="width:100%;border-color:var(--accent)" onclick="openDocEditAccessModal()" id="dEditAccessBtn">✏️ Sonder-Bearbeitung einstellen</button>
+      <div class="form-hint" style="margin-top:4px">Wer darf <strong>nur dieses Dokument</strong> bearbeiten – unabhängig vom Typ. Überschreibt keine globalen Einstellungen.</div>
+    </div>
+    <input type="hidden" id="dEditAccessLevel" value="0"/>
+    <input type="hidden" id="dEditAccessList" value="[]"/>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mDoc')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveDoc()">Speichern</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mDocAccess" style="z-index:8700"><div class="modal modal-xl" style="max-height:92vh">
+  <div class="modal-header">
+    <div class="modal-title">⚙ Rang-Sichtbarkeit für dieses Dokument</div>
+    <button class="modal-close" onclick="closeM('mDocAccess')">X</button>
+  </div>
+  <div class="modal-body" id="mDABody" style="padding:20px"></div>
+  <div class="modal-footer">
+    <div style="font-size:.72rem;color:var(--muted);flex:1">✅ = sieht das Dokument &nbsp;|&nbsp; ❌ = gesperrt</div>
+    <button class="btn btn-ghost" onclick="closeM('mDocAccess')">Schließen</button>
+    <button class="btn btn-primary" onclick="saveDocAccessRules()">Übernehmen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mDocEditAccess" style="z-index:8700"><div class="modal modal-lg" style="max-height:88vh">
+  <div class="modal-header">
+    <div class="modal-title">✏️ Sonder-Bearbeitung – nur dieses Dokument</div>
+    <button class="modal-close" onclick="closeM('mDocEditAccess')">X</button>
+  </div>
+  <div class="modal-body" style="padding:20px">
+    <div style="font-size:.7rem;color:var(--muted);margin-bottom:14px">Diese Einstellungen überschreiben <strong>nur für dieses Dokument</strong> wer es bearbeiten darf. Sie wirken sich <u>nicht</u> auf andere Dokumente des gleichen Typs aus.</div>
+    <div class="form-group">
+      <label class="form-label">Mindest-Stufe zum Bearbeiten</label>
+      <select class="form-select" id="deaLevel">
+        <option value="0">Standard (Typ-Einstellung verwenden)</option>
+        <option value="1">Stufe 1+ (Öffentliche Beamte)</option>
+        <option value="2">Stufe 2+ (Reguläre Beamte)</option>
+        <option value="3">Stufe 3+ (Mittlere Ränge)</option>
+        <option value="4">Stufe 4+ (Hohe Ränge)</option>
+        <option value="5">Stufe 5 (Nur Höchste Ränge)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Weitere Personen mit Bearbeitungsrecht</label>
+      <div id="deaPersonList" style="padding:8px;background:var(--panel2);border:1px solid var(--border);max-height:140px;overflow-y:auto;font-size:.75rem;margin-bottom:6px"></div>
+      <select class="form-select" id="deaPersonSelect" style="margin-bottom:6px"><option value="">-- Person auswählen --</option></select>
+      <button type="button" class="btn btn-ghost btn-sm" style="width:100%" onclick="addDeaPerson()">+ Person hinzufügen</button>
+      <div class="form-hint">Diese Personen können das Dokument bearbeiten, unabhängig von ihrer Stufe.</div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mDocEditAccess')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveDocEditAccess()">Übernehmen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mDocDetail"><div class="modal modal-xl">
+  <div class="modal-header"><div class="modal-title" id="mDDTitle"></div><button class="modal-close" onclick="closeM('mDocDetail')">X</button></div>
+  <div class="modal-body" id="mDDBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost hidden" id="mDDEditBtn">Bearbeiten</button>
+    <button class="btn btn-danger hidden" id="mDDDelBtn">Löschen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mCar"><div class="modal">
+  <div class="modal-header"><div class="modal-title" id="mCarTitle">Fahrzeug hinzufügen</div><button class="modal-close" onclick="closeM('mCar')">X</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="carEditId"/>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Modell *</label><input class="form-input" id="carModel" placeholder="BMW M3"/></div>
+      <div class="form-group"><label class="form-label">Kennzeichen *</label><input class="form-input" id="carPlate" placeholder="ABC-123"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Besitzer</label><select class="form-select" id="carBesitzer"><option value="">-- kein Besitzer --</option></select></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mCar')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveCar()">Speichern</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mCarDetail"><div class="modal">
+  <div class="modal-header"><div class="modal-title" id="mCarDTitle"></div><button class="modal-close" onclick="closeM('mCarDetail')">X</button></div>
+  <div class="modal-body" id="mCarDBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost hidden" id="mCarDEditBtn">Bearbeiten</button>
+    <button class="btn btn-danger hidden" id="mCarDDelBtn">Löschen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mLex"><div class="modal modal-lg">
+  <div class="modal-header"><div class="modal-title" id="mLexTitle">Lexikon-Eintrag</div><button class="modal-close" onclick="closeM('mLex')">X</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="lexEditId"/>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Titel *</label><input class="form-input" id="lexTitle"/></div>
+      <div class="form-group"><label class="form-label">Kategorie</label><input class="form-input" id="lexCat" placeholder="z.B. Strafrecht"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Inhalt *</label><textarea class="form-textarea" id="lexContent" style="height:180px"></textarea></div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select class="form-select" id="lexActive"><option value="1">Aktiv</option><option value="0">Inaktiv</option></select>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mLex')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveLexikon()">Speichern</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mLexDetail"><div class="modal modal-lg">
+  <div class="modal-header"><div class="modal-title" id="mLDTitle"></div><button class="modal-close" onclick="closeM('mLexDetail')">X</button></div>
+  <div class="modal-body" id="mLDBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost hidden" id="mLDEditBtn">Bearbeiten</button>
+    <button class="btn btn-danger hidden" id="mLDDelBtn">Löschen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mIdAssign"><div class="modal">
+  <div class="modal-header"><div class="modal-title">ID zuweisen</div><button class="modal-close" onclick="closeM('mIdAssign')">X</button></div>
+  <div class="modal-body">
+    <div id="idAssignInfo" style="margin-bottom:14px;padding:14px;background:var(--panel2);border:1px solid var(--border);font-size:.85rem"></div>
+    <div class="form-group"><label class="form-label">Bürgerprofil *</label>
+      <select class="form-select" id="idAssignCit"><option value="">-- Bürger auswählen --</option></select>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mIdAssign')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveIdAssign()">Zuweisen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mDocTypes"><div class="modal modal-lg">
+  <div class="modal-header"><div class="modal-title">Document Typen &amp; Vorlagen</div><button class="modal-close" onclick="closeM('mDocTypes')">X</button></div>
+  <div class="modal-body" id="mDocTypesBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mDocTypes')">Schließen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mDocTypeEdit"><div class="modal modal-lg">
+  <div class="modal-header"><div class="modal-title" id="mDTETitle">Typ bearbeiten</div><button class="modal-close" onclick="closeM('mDocTypeEdit')">X</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="dteEditName"/>
+    <div class="form-group"><label class="form-label">Typname *</label><input class="form-input" id="dteName" placeholder="z.B. Ermittlungsakte"/></div>
+    <div class="form-group"><label class="form-label">Pflichttext (immer oben, nicht löschbar)</label>
+      <div style="font-size:.6rem;color:var(--muted);margin-bottom:6px">Dieser Text wird immer oben angezeigt and cannot be removed by the user. Platzhalter: {DATUM}, {BEAMTER}, {BÜRGER}.</div>
+      <textarea class="form-textarea" id="dteHeader" style="height:90px;font-family:monospace;font-size:.8rem;border-color:var(--danger)" placeholder="z.B. OFFIZIELLE STRAFAKTE - COAST.NET&#10;Ausgestellt am: {DATE} von {OFFICER}"></textarea>
+    </div>
+    <div class="form-group"><label class="form-label">Vorlage (bearbeitbarer Bereich)</label>
+      <div style="font-size:.6rem;color:var(--muted);margin-bottom:6px">Dieser Teil erscheint vorausgefüllt and can be edited by the user. Platzhalter: {NAME}, {DATUM}, {BEAMTER}, {BÜRGER}.</div>
+      <textarea class="form-textarea" id="dteTemplate" style="height:160px;font-family:monospace;font-size:.8rem" placeholder="Vorlage eingeben..."></textarea>
+    </div>
+    <hr class="detail-divider"/>
+    <div class="form-label" style="margin-bottom:10px;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">&#x1F512; Typ-Berechtigungen</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Wer kann diesen Typ <strong>sehen</strong>?</label>
+        <select class="form-select" id="dteVisLevel">
+          <option value="0">Alle (keine Einschränkung)</option>
+          <option value="1">Stufe 1+ (Öffentliche Beamte)</option>
+          <option value="2">Stufe 2+ (Reguläre Beamte)</option>
+          <option value="3">Stufe 3+ (Mittlere Ränge)</option>
+          <option value="4">Stufe 4+ (Hohe Ränge)</option>
+          <option value="5">Stufe 5 (Nur Höchste Ränge)</option>
+        </select>
+        <div class="form-hint">Mindest-Doc-Level um Dokumente dieses Typs zu sehen.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Wer kann diesen Typ <strong>bearbeiten</strong>?</label>
+        <select class="form-select" id="dteEditLevel">
+          <option value="0">Alle mit doc_edit Recht</option>
+          <option value="1">Stufe 1+ (Öffentliche Beamte)</option>
+          <option value="2">Stufe 2+ (Reguläre Beamte)</option>
+          <option value="3">Stufe 3+ (Mittlere Ränge)</option>
+          <option value="4">Stufe 4+ (Hohe Ränge)</option>
+          <option value="5">Stufe 5 (Nur Höchste Ränge)</option>
+        </select>
+        <div class="form-hint">Mindest-Level um Dokumente dieses Typs zu bearbeiten.</div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mDocTypeEdit')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveDocType()">Speichern</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mAdminUser"><div class="modal modal-lg">
+  <div class="modal-header"><div class="modal-title" id="mAUTitle">Benutzer bearbeiten</div><button class="modal-close" onclick="closeM('mAdminUser')">X</button></div>
+  <div class="modal-body" id="mAUBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mAdminUser')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveAdminUser()">Speichern</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mAdminJob"><div class="modal modal-xl">
+  <div class="modal-header"><div class="modal-title" id="mAJTitle">Beruf bearbeiten</div><button class="modal-close" onclick="closeM('mAdminJob')">X</button></div>
+  <div class="modal-body" id="mAJBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mAdminJob')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveAdminJob()">Speichern</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mRankEdit" style="z-index:8600"><div class="modal modal-xl" style="max-height:92vh">
+  <div class="modal-header">
+    <div class="modal-title" id="mRETitle">Rang bearbeiten</div>
+    <button class="modal-close" onclick="closeM('mRankEdit')">X</button>
+  </div>
+  <div class="modal-body" id="mREBody" style="padding:20px"></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mRankEdit')">Schließen</button>
+    <button class="btn btn-primary" onclick="saveRankEdit()">Übernehmen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mJobChange"><div class="modal">
+  <div class="modal-header"><div class="modal-title">Beruf wechseln</div><button class="modal-close" onclick="closeM('mJobChange')">X</button></div>
+  <div class="modal-body">
+    <div id="jobChangeInfo" style="margin-bottom:14px;padding:12px;background:var(--panel2);border:1px solid var(--border);font-size:.82rem;color:var(--text2)"></div>
+    <div class="form-group"><label class="form-label">Neuer Beruf</label>
+      <select class="form-select" id="jcJob" onchange="updateJCRang()"><option value="">-- Beruf auswählen --</option></select>
+    </div>
+    <div class="form-group hidden" id="jcRangGrp"><label class="form-label">Rang</label><select class="form-select" id="jcRang"></select></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mJobChange')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveJobChange()">Anwenden</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mWantedReason" style="z-index:8800"><div class="modal" style="max-width:460px">
+  <div class="modal-header"><div class="modal-title" style="color:var(--danger)">Als gesucht markieren</div></div>
+  <div class="modal-body">
+    <div style="margin-bottom:14px;padding:10px 14px;background:rgba(190,6,6,.08);border:1px solid rgba(190,6,6,.3);font-size:.78rem;color:var(--danger)">&#x26A0; Diese Person wird als gesucht markiert and visible to all officers.</div>
+    <div class="form-group"><label class="form-label">Grund *</label>
+      <input class="form-input" id="wantedReasonInput" placeholder="z.B. Verdacht auf Körperverletzung..."/>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mWantedReason')">Abbrechen</button>
+    <button class="btn btn-danger" onclick="confirmWanted()">Als gesucht markieren</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mConfirm" style="z-index:9000"><div class="modal" style="max-width:420px">
+  <div class="modal-header"><div class="modal-title">Bestätigung</div></div>
+  <div class="modal-body"><div id="mConfirmText" style="font-size:.9rem;color:var(--text2);line-height:1.6"></div></div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="confirmResolve(false)">Abbrechen</button>
+    <button class="btn btn-danger" onclick="confirmResolve(true)">Löschen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mAddAccess" style="z-index:8500"><div class="modal" style="max-width:480px">
+  <div class="modal-header"><div class="modal-title">Person hinzufügen to Document</div><button class="modal-close" onclick="closeM('mAddAccess')">X</button></div>
+  <div class="modal-body">
+    <div class="form-group">
+      <label class="form-label">Person auswählen</label>
+      <select class="form-select" id="addAccessUser">
+        <option value="">-- Person auswählen --</option>
+      </select>
+      <div class="form-hint">Diese Person kann das Dokument sehen, auch bei unzureichendem Rang.</div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mAddAccess')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveAddAccess()">Hinzufügen</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="mAddJobToBürger"><div class="modal">
+  <div class="modal-header"><div class="modal-title">Beruf zum Bürger hinzufügen</div><button class="modal-close" onclick="closeM('mAddJobToBürger')">X</button></div>
+  <div class="modal-body">
+    <div class="form-group"><label class="form-label">Berufstyp</label>
+      <select class="form-select" id="ajtcJobType" onchange="updateAJTCRang()">
+        <option value="first">Hauptberuf</option>
+        <option value="second">Zweitberuf</option>
+        <option value="third">Dritter Beruf</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Beruf *</label>
+      <select class="form-select" id="ajtcJob" onchange="updateAJTCRang()">
+        <option value="">-- Beruf auswählen --</option>
+      </select>
+    </div>
+    <div class="form-group hidden" id="ajtcRangGrp"><label class="form-label">Rang</label>
+      <select class="form-select" id="ajtcRang"></select>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mAddJobToBürger')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="saveAddJobToCitizen()">Hinzufügen</button>
+  </div>
+</div></div>
+
+<!-- StVO Modal -->
+<div class="modal-backdrop" id="mStvo" style="z-index:8700"><div class="modal" style="max-width:420px">
+  <div class="modal-header">
+    <div class="modal-title" id="stvoModalTitle">StVO Punkte</div>
+    <button class="modal-close" onclick="closeM('mStvo')">X</button>
+  </div>
+  <div class="modal-body">
+    <div style="padding:10px 16px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;text-align:center">
+      <div style="font-size:.6rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">Aktueller Stand</div>
+      <div id="stvoCurrentPts" style="font-family:monospace;font-size:1.3rem;font-weight:700;color:var(--accent)">0 Punkte</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Punktzahl *</label>
+      <input class="form-input" id="stvoAmount" type="number" min="1" placeholder="z.B. 2" oninput="stvoUpdatePreview()"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Grund *</label>
+      <input class="form-input" id="stvoReason" placeholder="z.B. Rotlichtverstoß..."/>
+    </div>
+    <div id="stvoPreview" style="font-size:.82rem;font-weight:700;margin-top:4px;min-height:18px;text-align:center;font-family:monospace"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeM('mStvo')">Abbrechen</button>
+    <button class="btn btn-primary" id="stvoSaveBtn" onclick="saveStvo()">Speichern</button>
+  </div>
+</div></div>
+
+<div class="toast-box" id="toastBox"></div>
+
+<script>
+
+var RES=(function(){try{var m=window.location.href.match(/cfx-nui-([^\/]+)/);if(m)return m[1];}catch(e){}return 'coastnet';})();
+var SESSION=null,CUR=null,EDIT_USER=null,EDIT_JOB=null,ASSIGN_UID=null;
+var DETAIL_CIT=null,DETAIL_DOC=null,DETAIL_CAR=null,DETAIL_LEX=null,DETAIL_JOB=null;
+var _stvoPage=0, _docPage=0, _docSearch='';
+var JC_UID=null,_confirmCb=null,rankIdx=1;
+var TEMP_ACCESS_LIST=[];
+var ALL_RIGHTS=['doc_create','doc_read','doc_edit','doc_delete','wanted_manage','map_view','stvo_manage','give_job','citizen_view','job_manage','doc_type_manage','job_create'];
+// Rechte die NUR als Charakter-Individualrecht gelten (nicht in Rang-Rechten auftauchen)
+var CHAR_ONLY_RIGHTS=['job_create'];
+
+function askConfirm(text,cb){document.getElementById('mConfirmText').textContent=text;_confirmCb=cb;openM('mConfirm');}
+function confirmResolve(yes){closeM('mConfirm');if(yes&&_confirmCb)_confirmCb();_confirmCb=null;}
+
+window.addEventListener('load',function(){
+
+  // job_einreise und job_arbeitslos aus gespeicherten Jobs entfernen
+  var jobs = ld('cn_jobs');
+  var changed = false;
+  jobs = jobs.filter(function(j){ if(j.id==='job_einreise'||j.id==='job_arbeitslos'){changed=true;return false;}return true; });
+  if(changed) sv('cn_jobs', jobs);
+
+
+  var s=sessionStorage.getItem('cn_session');
+  if(!s){
+    var u=localStorage.getItem('cn_currentUser');
+    if(u){
+      var userObj=JSON.parse(u);
+      s=JSON.stringify({id:userObj.id,username:userObj.username});
+      sessionStorage.setItem('cn_session',s);
+    }
+  }
+  if(!s){location.href='login.html';return;}
+  SESSION=JSON.parse(s);CUR=gU(SESSION.id);
+  if(!CUR){location.href='login.html';return;}
+  document.getElementById('appLayout').style.display='flex';
+  document.getElementById('topUsername').textContent=CUR.username;
+  document.getElementById('topCivId').textContent=CUR.civId||'--';
+  document.getElementById('topJobBadge').textContent=CUR.isMaster?'MASTER':((CUR.mainJob&&CUR.mainJob!=='job_arbeitslos'?jN(CUR.mainJob):'')||'--');
+  document.getElementById('topRangBadge').textContent=CUR.isMaster?'Vollzugriff':(rN(CUR.mainJob,CUR.mainRang)||'--');
+  if(CUR.isMaster)document.getElementById('topJobBadge').className='badge badge-danger';
+  if(CUR.isMaster){sh('tabAdmin',true);sh('tabIds',true);sh('tabLivemap',true);}
+  if(!CUR.isMaster&&(ok('job_manage')||ok('job_create')))sh('tabAdmin',true);
+  if(!CUR.isMaster&&ok('doc_type_manage')){sh('tabAdmin',true);sh('btnDocTypes',true);}
+  applyTabVisibility();
+  // Bürger-Tab: sichtbar wenn Master oder citizen_view Recht
+  if(!CUR.isMaster&&!ok('citizen_view'))document.getElementById('btnAddBürger').style.display='none';
+  // Cars-Tab immer sichtbar (kein car_view Recht mehr)
+  // IDs-Tab nur für Master
+  if(CUR.isMaster)sh('btnAddLexikon',true);
+  if(CUR.isMaster)sh('btnDocTypes',true);
+  document.querySelectorAll('.modal-backdrop').forEach(function(m){
+    // Kein Schließen durch Klick auf Backdrop - nur X-Button schließt
+  });
+  document.addEventListener('keydown',function(ev){
+    // Kein ESC-Schließen
+  });
+  
+
+
+  // ── Auto-Bereinigung: CIV-0000, Hash-Namen und Duplikate löschen ──
+  (function cleanupCivZero(){
+    var users = ld('cn_users');
+    var before = users.length;
+    users = users.filter(function(u){
+      if(u.isMaster) return true;
+      if(!u.civId || u.civId === '') return false;
+      if(/^CIV-0+$/.test(u.civId)) return false;
+      return true;
+    });
+    if(users.length !== before){ sv('cn_users', users); }
+
+    var cits = ld('cn_citizens');
+    var cBefore = cits.length;
+    // Null-Namen, leere Namen und Hash-Identifier als Name entfernen
+    cits = cits.filter(function(c){
+      var n = c.name || '';
+      if(!n || n === 'null' || n === 'NULL' || n === 'undefined') return false;
+      if(n.length > 30 && n.indexOf(' ') === -1) return false;
+      return true;
+    });
+    // Duplikate per Identifier entfernen (ersten behalten)
+    var seenIdents = {};
+    cits = cits.filter(function(c){
+      if(!c.identifier) return true;
+      if(seenIdents[c.identifier]) return false;
+      seenIdents[c.identifier] = true;
+      return true;
+    });
+    if(cits.length !== cBefore){ sv('cn_citizens', cits); }
+  })();
+
+  renderAll();
+
+  setTimeout(loadFromDatabase, 800);
+});
+
+
+window.addEventListener('message', function(event) {
+  var data = event.data;
+  if (!data || !data.action) return;
+  
+  if (data.action === 'loadCitizens') {
+
+    var serverCits = data.citizens || [];
+    var localCits  = ld('cn_citizens');
+    function dbVal(v){ return (v===null||v===undefined||v==='null'||v==='NULL'||v==='undefined') ? '' : String(v).trim(); }
+
+    serverCits.forEach(function(sc) {
+      // nr aus id ableiten wenn nicht vorhanden
+      if(!sc.nr && sc.id) sc.nr = sc.id;
+
+      // Namen bereinigen: wenn Name wie ein Hash aussieht, Vor+Nachname bevorzugen
+      var fn = dbVal(sc.u_firstname), ln = dbVal(sc.u_lastname);
+      var displayName = (fn && ln) ? (fn+' '+ln) : fn || ln || dbVal(sc.name) || 'Unbekannt';
+      if(!displayName || (displayName.length > 30 && displayName.indexOf(' ') === -1)) {
+        displayName = (fn && ln) ? (fn+' '+ln) : (dbVal(sc.name) || 'Unbekannt');
+      }
+
+      var idx = localCits.findIndex(function(lc){ return String(lc.id)===String(sc.id); });
+      var entry = {
+        id:           sc.id,
+        nr:           sc.nr || sc.id,
+        name:         displayName,
+        birth:        dbVal(sc.u_dateofbirth) || dbVal(sc.birth),
+        height:       dbVal(sc.u_height)      || dbVal(sc.height),
+        phone:        dbVal(sc.phone),
+        sex:          dbVal(sc.u_sex)         || dbVal(sc.sex) || 'M',
+        firstname:    fn,
+        lastname:     ln,
+        jobId:        dbVal(sc.job) || null,
+        rankId:       dbVal(sc.job_rank) || null,
+        job:          dbVal(sc.job) || 'job_arbeitslos',
+        job_rank:     dbVal(sc.job_rank) || 'rank_al_1',
+        second_job:   dbVal(sc.second_job) || null,
+        second_rank:  dbVal(sc.second_rank) || null,
+        wanted:       !!sc.wanted,
+        wanted_reason: dbVal(sc.wanted_reason),
+        identifier:   dbVal(sc.identifier),
+        fromDB:       true
+      };
+      if(idx>=0){ localCits[idx]=Object.assign(localCits[idx], entry); }
+      else { localCits.push(entry); }
+    });
+
+    // Null-Namen und ungültige Einträge rausfiltern
+    localCits = localCits.filter(function(c) {
+      var n = c.name || '';
+      if(!n) return false;
+      if(n === 'null' || n === 'NULL' || n === 'undefined') return false;
+      // Nur ein Wort UND länger als 30 Zeichen → wahrscheinlich ein Identifier-Hash
+      if(n.length > 30 && n.indexOf(' ') === -1) return false;
+      return true;
+    });
+
+    // Duplikate bereinigen: gleicher Identifier → nur einen behalten (den mit nr/id > 0)
+    var seen = {};
+    localCits = localCits.filter(function(c) {
+      if(!c.identifier) return true;
+      var key = c.identifier;
+      if(seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+
+    // CIV/CIT-0000 rausfiltern
+    var users = ld('cn_users');
+    var changed = false;
+    localCits.forEach(function(cit) {
+      if(!cit.identifier) return;
+      var ident = cit.identifier;
+      var matchedUser = users.find(function(u) {
+        if(!u.identifier) return false;
+        return u.identifier === ident
+          || u.identifier === ident.replace('license:','')
+          || 'license:'+u.identifier === ident;
+      });
+      if(matchedUser && matchedUser.linkedCitizenId !== cit.id) {
+        matchedUser.linkedCitizenId = cit.id;
+        changed = true;
+      }
+      if(matchedUser && cit.linkedUserId !== matchedUser.id) {
+        cit.linkedUserId = matchedUser.id;
+        changed = true;
+      }
+    });
+    if(changed){ sv('cn_users', users); }
+
+    sv('cn_citizens', localCits);
+    renderCitizens(); renderIds(); renderAusweis();
+    return;
+  }
+  if (data.action === 'loadVehicles') {
+    var serverVehs = data.vehicles || [];
+    var localVehs  = ld('cn_cars');
+    serverVehs.forEach(function(sv2) {
+      var idx = localVehs.findIndex(function(lv){ return String(lv.plate||lv.id)===String(sv2.plate||sv2.id); });
+      var entry = {
+        id:    sv2.id || sv2.plate,
+        plate: sv2.plate || '',
+        model: sv2.model || '',
+        owner: sv2.owner || '',
+        color: sv2.color || '',
+        fromDB: true
+      };
+      if(idx>=0){ localVehs[idx]=Object.assign(localVehs[idx], entry); }
+      else { localVehs.push(entry); }
+    });
+    sv('cn_cars', localVehs);
+    renderCars();
+    return;
+  }
+
+
+  if (data.action === 'refreshRequired') {
+    loadFromDatabase();
+    return;
+  }
+  if (data.action === 'loadTokens') {
+    renderTokenTable(data.tokens || []);
+  }
+});
+
+
+function loadFromDatabase() {
+  fetch('https://'+RES+'/loadCitizensFromDB',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})}).catch(function(){});
+  fetch('https://'+RES+'/loadVehiclesFromDB',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})}).catch(function(){});
+}
+
+
+function onServerRefresh() {
+  loadFromDatabase();
+}
+
+
+function renderTokenTable(tokens) {
+  var wrap = document.getElementById('tokenTableWrap');
+  if (!wrap) return;
+  if (!tokens || tokens.length === 0) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">&#x1F511;</div><div>Keine Tokens in der Datenbank gefunden.</div></div>';
+    return;
+  }
+  wrap.innerHTML =
+    '<div class="table-wrap"><table><thead><tr>'+
+    '<th>Token</th><th>Spielername (FiveM)</th><th>Bürger</th><th>Status</th><th>Genutzt von</th><th>Erstellt</th><th>Genutzt am</th></tr></thead><tbody>'+
+    tokens.map(function(t) {
+      var statusBadge = t.used
+        ? '<span class="badge badge-green">Genutzt</span>'
+        : '<span class="badge badge-muted">Offen</span>';
+      return '<tr>'+
+        '<td style="font-family:monospace;color:var(--accent);letter-spacing:.1em">'+ec(t.token||'--')+'</td>'+
+        '<td>'+ec(t.player_name||'--')+'</td>'+
+        '<td style="color:var(--text2)">'+ec(t.citizen_name||'--')+'</td>'+
+        '<td>'+statusBadge+'</td>'+
+        '<td>'+ec(t.used_by_username||'--')+'</td>'+
+        '<td style="font-size:.68rem;color:var(--muted)">'+
+          (t.created_at ? new Date(t.created_at).toLocaleString('de-DE') : '--')+'</td>'+
+        '<td style="font-size:.68rem;color:var(--muted)">'+
+          (t.used_at ? new Date(t.used_at).toLocaleString('de-DE') : '--')+'</td>'+
+        '</tr>';
+    }).join('')+
+    '</tbody></table></div>';
+}
+
+
+function loadTokensFromServer() {
+  try {
+    fetch('https://'+RES+'/loadTokensFromDB', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    }).catch(function() {});
+  } catch(e) {
+    console.warn('[COASTNET] Could not load tokens:', e);
+  }
+}
+
+function mergeCitizensFromDatabase(dbBürgers) {
+
+}
+
+function mergeVehiclesFromDatabase(dbVehicles) {
+
+}
+
+function ld(k){return JSON.parse(localStorage.getItem(k)||'[]');}
+function sv(k,v){localStorage.setItem(k,JSON.stringify(v));}
+function gU(id){return ld('cn_users').find(function(u){return u.id===id;})||null;}
+function gJ(id){return ld('cn_jobs').find(function(j){return j.id===id;})||null;}
+function jN(id){var j=gJ(id);return j?j.name:null;}
+function gR(jid,rid){var j=gJ(jid);return j?(j.ranks.find(function(r){return r.id===rid;})||null):null;}
+function rN(jid,rid){var r=gR(jid,rid);return r?r.name:null;}
+function cN(id){var c=ld('cn_citizens').find(function(c){return String(c.id)===String(id);});return c?c.name:'--';}
+function nId(){var c=parseInt(localStorage.getItem('cn_id_counter')||'2000');localStorage.setItem('cn_id_counter',String(c+1));return c;}
+function ec(s){if(s===null||s===undefined||s==='null'||s==='undefined'||s==='NULL')return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// null-safe display: zeigt '--' bei null/undefined/leeren Werten
+function nd(v,suffix){if(v===null||v===undefined||v==='null'||v==='NULL'||v===''||v==='undefined')return'--';return ec(v)+(suffix||'');}
+function td(){return new Date().toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function ok(r){
+  if(!CUR)return false;if(CUR.isMaster)return true;
+  var r1=gR(CUR.mainJob,CUR.mainRang),r2=CUR.secondJob?gR(CUR.secondJob,CUR.secondRang):null;
+  return(r1&&r1.rights||[]).indexOf(r)>=0||(r2&&r2.rights||[]).indexOf(r)>=0||(CUR.rights||[]).indexOf(r)>=0;
+}
+function getDocAccessLevel(){
+  if(!CUR)return 0;if(CUR.isMaster)return 5;
+  var r1=gR(CUR.mainJob,CUR.mainRang),r2=CUR.secondJob?gR(CUR.secondJob,CUR.secondRang):null;
+  var level1=(r1&&r1.docAccessLevel)||0,level2=(r2&&r2.docAccessLevel)||0;
+  return Math.max(level1,level2);
+}
+function audit(a,d){var logs=ld('cn_audit');logs.unshift({action:a,userId:SESSION&&SESSION.id,username:SESSION&&SESSION.username,detail:d,ts:new Date().toISOString()});if(logs.length>500)logs.splice(500);sv('cn_audit',logs);}
+function toast(msg,type){var c=document.getElementById('toastBox'),t=document.createElement('div');t.className='toast '+(type||'info');t.textContent=msg;c.appendChild(t);setTimeout(function(){t.remove();},3200);}
+function openM(id){document.getElementById(id).classList.add('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+function sh(id,show){var b=document.getElementById(id);if(b)b.classList.toggle('hidden',!show);}
+function showTab(n){
+  var layout=document.getElementById('appLayout');
+  document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');t.style.display='';t.style.height='';t.style.overflow='';});
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  var tc=document.getElementById('tab-'+n);
+  if(tc){
+    tc.classList.add('active');
+    if(n==='livemap'){
+      tc.style.display='flex';tc.style.flexDirection='column';
+      tc.style.height='calc(100vh - 56px - 48px)';
+      tc.style.overflow='hidden';
+      if(layout){layout.style.overflow='hidden';layout.style.height='100vh';}
+    } else {
+      if(layout){layout.style.overflow='';layout.style.height='';}
+    }
+  }
+  var tb=document.querySelector('[data-tab="'+n+'"]');if(tb)tb.classList.add('active');
+}
+function doLogout(){audit('LOGOUT','logged out');sessionStorage.removeItem('cn_session');localStorage.removeItem('cn_currentUser');sessionStorage.setItem('cn_manual_logout','1');location.replace('login.html');}
+
+
+var _livemapInited=false;
+function initLivemap(){
+  if(_livemapInited)return;
+  _livemapInited=true;
+
+  window.addEventListener('message',function(ev){
+    var lf=document.getElementById('livemapFrame');
+    if(!lf||!ev.data||!ev.data.action)return;
+    if(ev.data.action==='liveMapPlayers'||ev.data.action==='liveMapUpdate'||ev.data.action==='liveMapRemove'){
+      try{lf.contentWindow.postMessage(ev.data,'*');}catch(e){}
+    }
+  });
+}
+function renderAll(){renderAusweis();renderCitizens();renderDocs();renderCars();renderLexikon();renderIds();updateWantedBadge();}
+
+function renderAusweis(){
+  CUR=gU(SESSION.id);
+  var el=document.getElementById('ausweisCard');
+
+  // Master bekommt den alten Ausweis
+  if(CUR.isMaster){
+    el.innerHTML=
+      '<div style="background:var(--panel);border:1px solid var(--border2);border-top:3px solid var(--danger);padding:28px;max-width:480px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">'+
+      '<div><div style="font-size:.6rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:4px">Master Account</div>'+
+      '<div style="font-family:serif;font-size:2rem;color:var(--danger);letter-spacing:.1em">'+ec(CUR.civId||'--')+'</div></div></div>'+
+      '<div class="detail-grid" style="grid-template-columns:1fr 1fr;gap:14px">'+
+      '<div class="detail-field"><div class="detail-label">IC-Name</div><div class="detail-value">'+ec(CUR.username)+'</div></div>'+
+      '<div class="detail-field"><div class="detail-label">Rolle</div><div class="detail-value"><span class="badge badge-danger">MASTER</span></div></div>'+
+      '<div class="detail-field"><div class="detail-label">Vollzugriff</div><div class="detail-value">Alle Rechte</div></div>'+
+      '<div class="detail-field"><div class="detail-label">Registriert</div><div class="detail-value">'+new Date(CUR.createdAt||Date.now()).toLocaleDateString('de-DE')+'</div></div>'+
+      '</div></div>';
+    return;
+  }
+
+  // Citizen aus linkedCitizenId oder per Identifier suchen
+  var lc=CUR.linkedCitizenId?ld('cn_citizens').find(function(c){return String(c.id)===String(CUR.linkedCitizenId);}):null;
+  if(!lc && CUR.identifier){
+    lc=ld('cn_citizens').find(function(c){
+      return c.identifier&&(c.identifier===CUR.identifier||c.identifier===CUR.identifier.replace('license:',''));
+    });
+  }
+
+  if(!lc){
+    el.innerHTML='<div style="background:var(--panel);border:1px solid var(--border2);border-top:3px solid var(--danger);padding:28px;max-width:520px">'+
+      '<div style="font-size:.6rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:16px">Mein Ausweis</div>'+
+      '<div style="color:var(--muted);font-size:.82rem">Kein verknüpfter Charakter gefunden. Bitte wende dich an einen Admin.</div></div>';
+    return;
+  }
+
+  var fn=lc.firstname||'', ln=lc.lastname||'';
+  if(!fn&&!ln){ var parts=(lc.name||'').split(' '); fn=parts[0]||''; ln=parts.slice(1).join(' ')||''; }
+  var birth=lc.birth||'--';
+  var height=lc.height?(lc.height+' cm'):'--';
+  var sex=lc.sex?({'M':'Männlich','F':'Weiblich','m':'Männlich','f':'Weiblich','male':'Männlich','female':'Weiblich'}[lc.sex]||lc.sex):'--';
+
+  // Jobs — nur anzeigen wenn gesetzt und nicht job_arbeitslos
+  function jobField(label,jid,rid){
+    if(!jid||jid==='job_arbeitslos')return '';
+    var jname=jN(jid)||jid; var rname=rN(jid,rid)||'--';
+    return'<div class="detail-field"><div class="detail-label">'+label+'</div>'+
+      '<div class="detail-value"><span class="badge badge-muted" style="margin-right:6px">'+ec(jname)+'</span><span style="color:var(--muted);font-size:.72rem">'+ec(rname)+'</span></div></div>';
+  }
+
+  var job1id=lc.jobId||lc.job;var rank1id=lc.rankId||lc.job_rank;
+  var job2id=lc.secondJobId||lc.second_job;var rank2id=lc.secondRangId||lc.second_rank;
+  var job3id=lc.thirdJobId||lc.third_job;var rank3id=lc.thirdRangId||lc.third_rank;
+
+  var hasAnyJob=(job1id&&job1id!=='job_arbeitslos')||(job2id&&job2id!=='job_arbeitslos')||(job3id&&job3id!=='job_arbeitslos');
+  var jobsHTML=jobField('Hauptberuf',job1id,rank1id)+
+    jobField('Zweitberuf',job2id,rank2id)+
+    jobField('Drittberuf',job3id,rank3id);
+
+  // Wenn kein Job → "Unemployed" anzeigen
+  if(!hasAnyJob){
+    jobsHTML='<div class="detail-field"><div class="detail-label">Beruf</div><div class="detail-value" style="color:var(--muted)">Unemployed</div></div>';
+  }
+
+  el.innerHTML=
+    '<div style="background:var(--panel);border:1px solid var(--border2);border-top:3px solid var(--danger);padding:28px;max-width:520px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">'+
+    '<div><div style="font-size:.6rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:4px">Mein Ausweis</div>'+
+    '<div style="font-family:serif;font-size:2rem;color:var(--danger);letter-spacing:.1em">CIT-'+String(lc.nr||lc.id||0).padStart(4,'0')+'</div></div></div>'+
+    '<div class="detail-grid" style="grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">'+
+    '<div class="detail-field"><div class="detail-label">Vorname</div><div class="detail-value">'+ec(fn||'--')+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Nachname</div><div class="detail-value">'+ec(ln||'--')+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Geburtsdatum</div><div class="detail-value">'+ec(birth)+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Geschlecht</div><div class="detail-value">'+ec(sex)+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Größe</div><div class="detail-value">'+ec(height)+'</div></div>'+
+    '</div>'+
+    '<hr class="detail-divider" style="margin-bottom:14px"/>'+
+    '<div class="detail-grid" style="grid-template-columns:1fr;gap:10px">'+jobsHTML+'</div>'+
+    '</div>';
+}
+
+function openJobChange(uid){
+  JC_UID=uid;var u=gU(uid);
+  document.getElementById('jobChangeInfo').innerHTML='Job change for: <strong>'+ec(u.username)+'</strong> ('+ec(u.civId||'--')+')<br>Aktuell: '+ec((u.mainJob&&u.mainJob!=='job_arbeitslos'?jN(u.mainJob):'')||'--')+' / '+ec(rN(u.mainJob,u.mainRang)||'--');
+  var jSel=document.getElementById('jcJob');
+  jSel.innerHTML='<option value="">-- Beruf auswählen --</option>'+
+    ld('cn_jobs').filter(function(j){return!j.isSecondJob;}).map(function(j){return'<option value="'+j.id+'"'+(j.id===u.mainJob?' selected':'')+'>'+ec(j.name)+'</option>';}).join('');
+  document.getElementById('jcRangGrp').classList.add('hidden');
+  updateJCRang(u.mainRang);
+  openM('mJobChange');
+}
+function updateJCRang(selRang){
+  var jid=document.getElementById('jcJob').value,grp=document.getElementById('jcRangGrp'),rSel=document.getElementById('jcRang');
+  if(!jid){grp.classList.add('hidden');return;}
+  var j=gJ(jid);if(!j||!j.ranks.length){grp.classList.add('hidden');return;}
+  rSel.innerHTML=j.ranks.map(function(r){return'<option value="'+r.id+'"'+(r.id===selRang?' selected':'')+'>'+ec(r.name)+' (Lv.'+r.level+')</option>';}).join('');
+  grp.classList.remove('hidden');
+}
+function saveJobChange(){
+  var jid=document.getElementById('jcJob').value,rid=document.getElementById('jcRang').value;
+  if(!jid){toast('Bitte einen Beruf auswählen!','error');return;}
+  var users=ld('cn_users'),i=users.findIndex(function(u){return u.id===JC_UID;});
+  if(i<0)return;
+  users[i].mainJob=jid;users[i].mainRang=rid||null;sv('cn_users',users);
+  audit('JOB_CHANGE','Job: '+users[i].username+' -> '+jN(jid));
+  if(JC_UID===CUR.id){CUR=gU(CUR.id);document.getElementById('topJobBadge').textContent=(CUR.mainJob&&CUR.mainJob!=='job_arbeitslos'?jN(CUR.mainJob):'')||'--';document.getElementById('topRangBadge').textContent=rN(CUR.mainJob,CUR.mainRang)||'--';}
+  closeM('mJobChange');renderAusweis();toast('Beruf geändert: '+jN(jid),'success');
+}
+
+function renderIds(){
+  if(!CUR.isMaster)return;
+  var list=document.getElementById('idList'),q=(document.getElementById('idSearch').value||'').toLowerCase();
+  var users=ld('cn_users');
+  if(q)users=users.filter(function(u){return u.username.toLowerCase().indexOf(q)>=0||(u.civId||'').toLowerCase().indexOf(q)>=0;});
+  document.getElementById('idCount').textContent=users.length+' IDs';
+  if(!users.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1FAA7;</div><div>Keine IDs</div></div>';return;}
+  var canA=CUR.isMaster;
+  list.innerHTML=users.map(function(u){
+    var lc=u.linkedCitizenId?ld('cn_citizens').find(function(c){return String(c.id)===String(u.linkedCitizenId);}):null;
+    return'<div class="card" style="cursor:default">'+
+      '<div class="card-left" style="gap:16px">'+
+      '<div style="font-family:monospace;font-size:.9rem;color:var(--danger);font-weight:600">'+ec(u.civId||'--')+'</div>'+
+      '<div><div class="card-title">'+ec(u.username)+(u.isMaster?' <span class="badge badge-danger">Master</span>':'')+'</div>'+
+      '<div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+ec((u.mainJob&&u.mainJob!=='job_arbeitslos'?jN(u.mainJob):'')||'--')+'</div></div></div>'+
+      '<div class="card-right">'+
+      (lc?'<span class="badge badge-green">-> '+ec(lc.name)+'</span>':'<span class="badge badge-muted">Nicht zugewiesen</span>')+
+      (canA&&!u.isMaster?'<button class="btn btn-primary btn-sm" onclick="openIdAssign(\''+u.id+'\')">Zuweisen</button>':'')+
+      '</div></div>';
+  }).join('');
+}
+function openIdAssign(uid){
+  ASSIGN_UID=uid;var u=gU(uid);
+  document.getElementById('idAssignInfo').innerHTML=
+    '<div style="display:flex;gap:14px;align-items:center"><div style="font-family:monospace;font-size:1.1rem;color:var(--danger);font-weight:600">'+ec(u.civId)+'</div>'+
+      '<div><div style="font-size:.9rem;color:var(--text)">'+ec(u.username)+'</div><div style="font-size:.65rem;color:var(--muted)">'+ec((u.mainJob&&u.mainJob!=='job_arbeitslos'?jN(u.mainJob):'')||'--')+'</div></div></div>'+
+    (u.linkedCitizenId?'<div style="margin-top:8px;font-size:.72rem;color:var(--accent)">Aktuell: '+ec(cN(u.linkedCitizenId))+'</div>':'');
+  var sel=document.getElementById('idAssignCit');
+  sel.innerHTML='<option value="">-- Bürger auswählen --</option>'+
+    ld('cn_citizens').map(function(c){return'<option value="'+c.id+'"'+(c.id===u.linkedCitizenId?' selected':'')+'>'+ec(c.name)+' (CIT-'+String(c.nr||c.id||0).padStart(4,'0')+')</option>';}).join('');
+  openM('mIdAssign');
+}
+function saveIdAssign(){
+  var cid=document.getElementById('idAssignCit').value;
+  if(!cid){toast('Bitte einen Bürger auswählen!','error');return;}
+  var users=ld('cn_users'),ui=users.findIndex(function(u){return u.id===ASSIGN_UID;});if(ui<0)return;
+  var old=users[ui].linkedCitizenId;users[ui].linkedCitizenId=cid;sv('cn_users',users);
+  var cits=ld('cn_citizens'),ci=cits.findIndex(function(c){return String(c.id)===String(cid);});
+  if(ci>=0){cits[ci].linkedUserId=ASSIGN_UID;sv('cn_citizens',cits);}
+  if(old&&old!==cid){var oi=cits.findIndex(function(c){return String(c.id)===String(old);});if(oi>=0&&cits[oi].linkedUserId===ASSIGN_UID){cits[oi].linkedUserId=null;sv('cn_citizens',cits);}}
+  audit('ID_ASSIGN',users[ui].civId+' -> '+cN(cid));
+  if(ASSIGN_UID===CUR.id){CUR=gU(CUR.id);renderAusweis();}
+  closeM('mIdAssign');renderIds();renderCitizens();toast(users[ui].civId+' -> '+cN(cid)+' zugewiesen.','success');
+}
+
+function renderCitizens(){
+  if(!CUR.isMaster&&!ok('citizen_view')){
+    var list=document.getElementById('citizenList');
+    if(list)list.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F512;</div><div>Keine Berechtigung</div></div>';
+    document.getElementById('citizenCount').textContent='0 Bürger';
+    return;
+  }
+  var list=document.getElementById('citizenList'),q=(document.getElementById('citizenSearch').value||'').toLowerCase();
+  var arr=ld('cn_citizens');
+  if(q)arr=arr.filter(function(c){return c.name.toLowerCase().indexOf(q)>=0;});
+  document.getElementById('citizenCount').textContent=arr.length+' Bürger';
+  if(!arr.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F464;</div><div>Keine Bürger vorhanden</div></div>';return;}
+  list.innerHTML=arr.map(function(c){
+    var lu=c.linkedUserId?gU(c.linkedUserId):null;
+   
+    var wantedBadge = '';
+    if(c.wanted === true) {
+      wantedBadge = ' <span class="badge badge-danger" style="font-weight:600;font-size:.65rem;margin-left:8px;vertical-align:middle">GESUCHT</span>';
+    }
+    return'<div class="card" onclick="openCitizenDetail(\''+c.id+'\')" style="'+(c.wanted?'border-left:3px solid var(--danger);':'')+'">' +
+      '<div class="card-left"><div class="card-id">CIT-'+String(c.nr||c.id||0).padStart(4,'0')+'</div>'+
+      '<div class="card-label" style="'+(c.wanted?'color:var(--danger)':'')+'">'+(c.wanted?'GESUCHT':'Bürger')+'</div>'+
+      '<div class="card-title">'+ec(c.name)+wantedBadge+'</div></div>'+
+      '<div class="card-right">'+
+      (lu?'<span class="badge badge-accent">'+ec(lu.civId)+'</span>':'<span class="badge badge-muted">Kein Ausweis</span>')+
+      ((c.stvoPunkte&&c.stvoPunkte>0)?'<span class="badge badge-accent">'+c.stvoPunkte+' Pkt.</span>':'')+
+      '<span class="card-meta">'+nd(jN(c.jobId))+'</span><span class="card-arrow">&#x203A;</span></div></div>';
+  }).join('');
+}
+function openCitizenModal(editId){
+  if(!CUR.isMaster&&!ok('citizen_view')){toast('Keine Berechtigung!','error');return;}
+  document.getElementById('cEditId').value=editId||'';
+  document.getElementById('mCitizenTitle').textContent=editId?'Bürger bearbeiten':'Person hinzufügen';
+  var uSel=document.getElementById('cLinked');
+  uSel.innerHTML='<option value="">-- kein Account --</option>'+ld('cn_users').filter(function(u){return!u.isMaster;}).map(function(u){return'<option value="'+u.id+'">'+ec(u.civId)+' -- '+ec(u.username)+'</option>';}).join('');
+  if(editId){var c=ld('cn_citizens').find(function(c){return String(c.id)===String(editId);});document.getElementById('cName').value=c.name||'';document.getElementById('cBirth').value=c.birth||'';document.getElementById('cHeight').value=c.height||'';document.getElementById('cTelefon').value=c.phone||'';uSel.value=c.linkedUserId||'';}
+  else{['cName','cBirth','cHeight','cTelefon'].forEach(function(f){document.getElementById(f).value='';});uSel.value='';}
+  openM('mCitizen');
+}
+function saveCitizen(){
+  var name=document.getElementById('cName').value.trim();if(!name){toast('Name ist erforderlich!','error');return;}
+  var birth=document.getElementById('cBirth').value,height=document.getElementById('cHeight').value,
+      phone=document.getElementById('cTelefon').value.trim(),
+      linkUid=document.getElementById('cLinked').value,
+      editId=document.getElementById('cEditId').value;
+  var cits=ld('cn_citizens');
+  if(editId){var i=cits.findIndex(function(c){return c.id===editId;});if(i>=0){cits[i].name=name;cits[i].birth=birth;cits[i].height=height;cits[i].phone=phone;cits[i].linkedUserId=linkUid||null;cits[i].updatedAt=new Date().toISOString();}audit('CITIZEN_EDIT','Bürger bearbeitet: '+name);}
+  else{var nr=nId();cits.unshift({id:'cit_'+nr,nr:nr,name:name,birth:birth,height:height,phone:phone,linkedUserId:linkUid||null,createdAt:new Date().toISOString()});audit('CITIZEN_CREATE','Neuer Bürger: '+name);}
+  sv('cn_citizens',cits);
+  if(linkUid){var users=ld('cn_users'),ui=users.findIndex(function(u){return u.id===linkUid;});if(ui>=0){users[ui].linkedCitizenId=editId||cits[0].id;sv('cn_users',users);}}
+  var savedCit=editId?cits[cits.findIndex(function(c){return String(c.id)===String(editId);})]:(cits[0]||null);
+  if(savedCit){fetch('https://'+RES+'/saveCitizen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({citizen:savedCit})}).catch(function(){});}
+  renderCitizens();closeM('mCitizen');toast(editId?'Bürger aktualisiert.':'Bürger erstellt.','success');
+}
+function syncRights(uid,jid,rid,jobType){
+  var users=ld('cn_users'),i=users.findIndex(function(u){return u.id===uid;});if(i<0)return;
+  var cits=ld('cn_citizens'),ci=cits.findIndex(function(c){return c.linkedUserId===uid;});
+  // Alle 3 Jobs vom Citizen auf den User übertragen
+  if(ci>=0){
+    var cit=cits[ci];
+    users[i].mainJob=cit.jobId||cit.job||null;
+    users[i].mainRang=cit.rankId||cit.job_rank||null;
+    users[i].secondJob=cit.secondJobId||cit.second_job||null;
+    users[i].secondRang=cit.secondRangId||cit.second_rank||null;
+    users[i].thirdJob=cit.thirdJobId||cit.third_job||null;
+    users[i].thirdRang=cit.thirdRangId||cit.third_rank||null;
+  } else if(jid){
+    users[i].mainJob=jid;users[i].mainRang=rid;
+  }
+  sv('cn_users',users);
+  if(uid===CUR.id){
+    CUR=gU(CUR.id);
+    renderAusweis();
+    document.getElementById('topJobBadge').textContent=jN(CUR.mainJob)||'--';
+    document.getElementById('topRangBadge').textContent=rN(CUR.mainJob,CUR.mainRang)||'--';
+  }
+  audit('SYNC_RIGHTS','Rechte sync: '+(gU(uid)&&gU(uid).username)+' -> '+jN(jid||users[i].mainJob));
+}
+function openCitizenDetail(id){
+  // Zugriffsprüfung Bürgerprofil
+  if(!CUR.isMaster && !canAccessProfile(id)){
+    toast('Kein Zugriff auf Bürgerprofile.','error');return;
+  }
+  var prevId = DETAIL_CIT;
+  DETAIL_CIT=id;var c=ld('cn_citizens').find(function(c){return String(c.id)===String(id);});if(!c)return;
+  if(prevId !== id){ _stvoPage=0; _docPage=0; _docSearch=''; }
+  var lu=c.linkedUserId?gU(c.linkedUserId):null;
+  var jn=c.jobId?(jN(c.jobId)||'--'):'--',rn=(c.jobId&&c.rankId)?(rN(c.jobId,c.rankId)||'--'):'--';
+  var jn2=c.secondJobId?(jN(c.secondJobId)||'--'):null;
+  var rn2=(c.secondJobId&&c.secondRangId)?(rN(c.secondJobId,c.secondRangId)||'--'):null;
+  var jn3=c.thirdJobId?(jN(c.thirdJobId)||'--'):null;
+  var rn3=(c.thirdJobId&&c.thirdRangId)?(rN(c.thirdJobId,c.thirdRangId)||'--'):null;
+  var hasImmigrationVerification=false; // entfernt
+  var docs=ld('cn_documents').filter(function(d){return String(d.citizenId)===String(id);});
+  var isWanted=c.wanted||false;
+  var canManageWanted=CUR.isMaster||ok('wanted_manage');
+  var canChangeJob=false; // Beruf wechseln entfernt
+  var canAssignJobs=CUR.isMaster||ok('give_job');
+
+  // ── Wanted-Banner ──
+  var wantedBanner = isWanted
+    ? '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(190,6,6,.12);border:1px solid rgba(190,6,6,.35);margin-bottom:14px">'
+        +'<span style="font-size:1.1rem">&#x26A0;</span>'
+        +'<div><div style="font-size:.72rem;font-weight:700;color:var(--danger);letter-spacing:.1em;text-transform:uppercase">Gesucht</div>'
+        +'<div style="font-size:.75rem;color:var(--text2);margin-top:2px">'+(c.wantedReason?ec(c.wantedReason):'Kein Grund angegeben')
+        +(c.wantedBy?' &bull; Beamter: '+ec(c.wantedBy):'')
+        +(c.wantedDate?' &bull; Seit: '+new Date(c.wantedDate).toLocaleDateString('de-DE'):'')+'</div></div>'
+        +(canManageWanted?'<button class="btn btn-ghost btn-sm" style="margin-left:auto;flex-shrink:0" onclick="toggleWanted(\''+id+'\',false)">Entfernen</button>':'')
+      +'</div>'
+    : '';
+
+  // ── Tab: Infos ──
+  var fullName = (c.firstname && c.lastname)
+    ? nd(c.firstname)+' '+nd(c.lastname)
+    : ec(c.name);
+  var sexLabel = !c.sex ? '--' : (c.sex === 'f' || c.sex === 'F' || c.sex === 'w' || c.sex === 'W' ? 'Weiblich' : 'Männlich');
+
+  var tabInfos =
+    '<div class="detail-grid">'
+    +'<div class="detail-field"><div class="detail-label">Vorname</div><div class="detail-value">'+nd(c.firstname)+'</div></div>'
+    +'<div class="detail-field"><div class="detail-label">Nachname</div><div class="detail-value">'+nd(c.lastname)+'</div></div>'
+    +'<div class="detail-field"><div class="detail-label">Geburtsdatum</div><div class="detail-value">'+nd(c.birth)+'</div></div>'
+    +'<div class="detail-field"><div class="detail-label">Geschlecht</div><div class="detail-value">'+sexLabel+'</div></div>'
+    +'<div class="detail-field"><div class="detail-label">Größe</div><div class="detail-value">'+nd(c.height,'&nbsp;cm')+'</div></div>'
+    +'<div class="detail-field"><div class="detail-label">Telefon</div><div class="detail-value">'+nd(c.phone)+'</div></div>'
+    +'<div class="detail-field"><div class="detail-label">Beruf</div><div class="detail-value"><span class="badge badge-accent">'+nd(jn)+'</span></div></div>'
+    +'<div class="detail-field"><div class="detail-label">Rang</div><div class="detail-value">'+nd(rn)+'</div></div>'
+    +'</div>'
+    +'<hr class="detail-divider"/>'
+    // Weitere Jobs
+    +'<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="detail-label">Weitere Berufe</div>'
+    +(canAssignJobs?'<button class="btn btn-ghost btn-sm" onclick="openAddJobToCitizen(\''+id+'\')" style="padding:2px 8px;font-size:.7rem">+ Hinzufügen</button>':'')
+    +'</div>'
+    +(jn2?'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--panel2);border:1px solid var(--border);margin-bottom:4px;border-radius:4px">'
+      +'<div><span style="font-size:.75rem;color:var(--muted)">2. Beruf:</span> <span class="badge badge-accent">'+ec(jn2)+'</span> <span style="font-size:.7rem;color:var(--muted)">('+nd(rn2)+')</span></div>'
+      +(canAssignJobs?'<button class="btn btn-danger btn-sm" onclick="removeJobFromCitizen(\''+id+'\',\'second\')" style="padding:2px 6px;font-size:.65rem">X</button>':'')
+    +'</div>':'')
+    +(jn3?'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--panel2);border:1px solid var(--border);margin-bottom:4px;border-radius:4px">'
+      +'<div><span style="font-size:.75rem;color:var(--muted)">3. Beruf:</span> <span class="badge badge-accent">'+ec(jn3)+'</span> <span style="font-size:.7rem;color:var(--muted)">('+nd(rn3)+')</span></div>'
+      +(canAssignJobs?'<button class="btn btn-danger btn-sm" onclick="removeJobFromCitizen(\''+id+'\',\'third\')" style="padding:2px 6px;font-size:.65rem">X</button>':'')
+    +'</div>':'')
+    +'</div>'
+    +'<hr class="detail-divider"/>'
+    // Wanted-Button
+    +(canManageWanted&&!isWanted?'<div style="margin-bottom:14px"><button class="btn btn-danger btn-sm" onclick="toggleWanted(\''+id+'\',true)">Als gesucht markieren</button></div><hr class="detail-divider"/>':'')
+    // Verknüpfter Account
+    +'<div class="detail-label" style="margin-bottom:6px">Verknüpfter Account</div>'
+    +'<div style="margin-bottom:14px">'+(lu?'<span class="badge badge-danger" style="margin-right:8px">'+ec(lu.civId)+'</span>'+ec(lu.username):'<span style="color:var(--muted);font-size:.82rem">Kein Account</span>')+'</div>'
+    +(lu&&c.jobId?'<div style="padding:10px 14px;background:rgba(46,125,50,.08);border:1px solid rgba(76,175,80,.2);font-size:.72rem;color:#4caf50;margin-bottom:14px">Rechte synchronisiert – Beruf '+ec(jn)+' aktiv</div>':'')+'';
+
+  // ── Tab: Aktivität ──
+  var stvoSection = buildStvoSection(c);
+
+  // Dokumente mit Suche + Pagination
+  var docsFiltered = _docSearch
+    ? docs.filter(function(d){ return (d.title||'').toLowerCase().indexOf(_docSearch)>=0 || (d.type||'').toLowerCase().indexOf(_docSearch)>=0; })
+    : docs;
+  var perPageDoc = 10;
+  var totalDocPages = Math.max(1, Math.ceil(docsFiltered.length / perPageDoc));
+  if(_docPage >= totalDocPages) _docPage = 0;
+  var docsPage = docsFiltered.slice(_docPage * perPageDoc, (_docPage+1) * perPageDoc);
+
+  var docsHtml = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Dokumente ('+docsFiltered.length+')</div>'
+    + '</div>'
+    + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:6px 10px">'
+    + '<span style="color:var(--muted);font-size:.85rem">&#x1F50D;</span>'
+    + '<input id="cdDocSearch" type="text" value="'+ec(_docSearch)+'" placeholder="Dokumente durchsuchen..." oninput="cdDocSearchChange(\''+id+'\',this.value)" style="background:none;border:none;outline:none;font-size:.75rem;color:var(--text);flex:1;font-family:inherit"/>'
+    + (_docSearch ? '<button onclick="cdDocSearchChange(\''+id+'\',\'\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:0">✕</button>' : '')
+    + '</div>'
+    + '<div class="card-list">'+(docsFiltered.length===0
+      ? '<div style="color:var(--muted);font-size:.75rem;padding:6px 0">'+(docs.length===0?'Keine Dokumente vorhanden':'Keine Dokumente gefunden')+'</div>'
+      : docsPage.map(function(d){
+          return '<div class="card" style="cursor:default"><div class="card-left"><div class="card-label">'+ec(d.type)+'</div><div class="card-title">'+ec(d.title)+'</div></div>'
+            +'<div class="card-right"><span class="card-meta">'+ec(d.date)+'</span><button class="btn btn-ghost btn-sm" onclick="closeM(\'mCitizenDetail\');openDocDetail(\''+d.id+'\')">Ansehen</button></div></div>';
+        }).join(''))
+    + '</div>'
+    + (docsFiltered.length > perPageDoc
+        ? '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:.65rem;color:var(--muted)">'
+            + '<button class="btn btn-ghost btn-sm" style="font-size:.6rem;padding:2px 8px" '
+              + (_docPage > 0 ? 'onclick="docChangePage('+(_docPage-1)+',\''+id+'\')"' : 'disabled style="opacity:.3"')
+              + '>&#8592; Zurück</button>'
+            + '<span>Seite '+(_docPage+1)+' / '+totalDocPages+'</span>'
+            + '<button class="btn btn-ghost btn-sm" style="font-size:.6rem;padding:2px 8px" '
+              + (_docPage < totalDocPages-1 ? 'onclick="docChangePage('+(_docPage+1)+',\''+id+'\')"' : 'disabled style="opacity:.3"')
+              + '>Weiter &#8594;</button>'
+          + '</div>'
+        : '');
+
+  var tabAktivitaet = stvoSection + '<hr class="detail-divider"/>' + docsHtml;
+
+  // ── Tab-Wrapper ──
+  var html = wantedBanner
+    // Tab-Buttons
+    +'<div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:16px">'
+      +'<button id="cdTab_infos" onclick="cdSwitchTab(\'infos\')" style="padding:8px 18px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--accent);font-size:.78rem;font-weight:600;cursor:pointer;letter-spacing:.06em">Infos</button>'
+      +'<button id="cdTab_akt" onclick="cdSwitchTab(\'akt\')" style="padding:8px 18px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:.78rem;cursor:pointer;letter-spacing:.06em">Aktivität</button>'
+    +'</div>'
+    +'<div id="cdPane_infos">'+tabInfos+'</div>'
+    +'<div id="cdPane_akt" style="display:none">'+tabAktivitaet+'</div>';
+
+  document.getElementById('mCDTitle').innerHTML='<span style="color:var(--danger)">CIT-'+String(c.nr||c.id||0).padStart(4,'0')+'</span> '+fullName+(isWanted?' <span class="badge badge-danger">GESUCHT</span>':'');
+  document.getElementById('mCDBody').innerHTML=html;
+
+  sh('mCDEditBtn',CUR.isMaster);sh('mCDDelBtn',CUR.isMaster);
+  document.getElementById('mCDEditBtn').onclick=function(){closeM('mCitizenDetail');openCitizenModal(id);};
+  document.getElementById('mCDDelBtn').onclick=function(){
+    var name=c.name;
+    askConfirm('Bürger "'+name+'" wirklich löschen?',function(){
+      sv('cn_citizens',ld('cn_citizens').filter(function(x){return String(x.id)!==String(DETAIL_CIT);}));
+      audit('CITIZEN_DELETE','Bürger gelöscht: '+name);
+      closeM('mCitizenDetail');renderCitizens();toast('Bürger gelöscht.','error');
+    });
+  };
+  openM('mCitizenDetail');
+}
+
+function cdSwitchTab(tab){
+  var isInfos = tab==='infos';
+  document.getElementById('cdPane_infos').style.display = isInfos?'':'none';
+  document.getElementById('cdPane_akt').style.display   = isInfos?'none':'';
+  var tI=document.getElementById('cdTab_infos'), tA=document.getElementById('cdTab_akt');
+  tI.style.borderBottomColor = isInfos?'var(--accent)':'transparent';
+  tI.style.color = isInfos?'var(--accent)':'var(--muted)';
+  tI.style.fontWeight = isInfos?'600':'400';
+  tA.style.borderBottomColor = isInfos?'transparent':'var(--accent)';
+  tA.style.color = isInfos?'var(--muted)':'var(--accent)';
+  tA.style.fontWeight = isInfos?'400':'600';
+}
+
+function docChangePage(page, citId) {
+  _docPage = page;
+  openCitizenDetail(citId);
+  setTimeout(function(){ cdSwitchTab('akt'); }, 10);
+}
+
+function cdDocSearchChange(citId, val) {
+  _docSearch = (val||'').toLowerCase().trim();
+  _docPage = 0;
+  openCitizenDetail(citId);
+  setTimeout(function(){
+    cdSwitchTab('akt');
+    var el = document.getElementById('cdDocSearch');
+    if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }, 10);
+}
+
+var _wantedTargetId=null;
+function toggleWanted(citId,setWanted){
+  var cits=ld('cn_citizens'),i=cits.findIndex(function(c){return String(c.id)===String(citId);});
+  if(i<0)return;
+  if(setWanted){
+    _wantedTargetId=citId;
+    document.getElementById('wantedReasonInput').value='';
+    openM('mWantedReason');
+    setTimeout(function(){document.getElementById('wantedReasonInput').focus();},100);
+  }else{
+    cits[i].wanted=false;cits[i].wantedReason=null;cits[i].wantedDate=null;cits[i].wantedBy=null;
+    sv('cn_citizens',cits);
+  audit('WANTED_REMOVE',cits[i].name+' removed from wanted');
+  toast('Gesucht-Status entfernt.','success');
+    renderCitizens();
+    openCitizenDetail(citId);
+    updateWantedBadge();
+  }
+}
+function confirmWanted(){
+  var reason=document.getElementById('wantedReasonInput').value.trim();
+  if(!reason){toast('Bitte einen Grund angeben!','error');return;}
+  var cits=ld('cn_citizens'),i=cits.findIndex(function(c){return String(c.id)===String(_wantedTargetId);});
+  if(i<0)return;
+  cits[i].wanted=true;cits[i].wantedReason=reason;cits[i].wantedDate=new Date().toISOString();cits[i].wantedBy=CUR.username;
+  sv('cn_citizens',cits);
+  audit('WANTED_ADD',cits[i].name+' wanted: '+reason);
+  toast(cits[i].name+' als gesucht markiert.','error');
+  closeM('mWantedReason');
+  renderCitizens();
+  openCitizenDetail(_wantedTargetId);
+  updateWantedBadge();
+}
+// ─────────────── StVO SYSTEM ───────────────
+
+// ─────────────── StVO SYSTEM ───────────────
+
+function buildStvoSection(c) {
+  var pts = c.stvoPunkte || 0;
+  var canSt = CUR.isMaster || ok('stvo_manage');
+  var all = c.stvoHistory || [];
+  var perPage = 5;
+  var totalPages = Math.max(1, Math.ceil(all.length / perPage));
+  if(_stvoPage >= totalPages) _stvoPage = totalPages - 1;
+  var page = all.slice(_stvoPage * perPage, (_stvoPage + 1) * perPage);
+
+  var histHtml = page.length === 0
+    ? '<div style="font-size:.7rem;color:var(--muted);padding:8px 10px">Keine Einträge</div>'
+    : page.map(function(h, i) {
+        var realIdx = _stvoPage * perPage + i;
+        var col = h.delta > 0 ? 'var(--danger)' : '#4caf50';
+        var sign = h.delta > 0 ? '+' : '';
+        var delBtn = CUR.isMaster
+          ? '<button onclick="deleteStvoEntry(\''+c.id+'\','+realIdx+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;padding:0 4px;flex-shrink:0" title="Eintrag löschen">✕</button>'
+          : '';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:.7rem">'
+          + '<span style="color:var(--text2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ec(h.reason) + '</span>'
+          + '<span style="color:var(--muted);font-size:.62rem;white-space:nowrap;flex-shrink:0">&#128100; ' + ec(h.officer||'–') + '</span>'
+          + '<span style="color:' + col + ';font-weight:700;font-family:monospace;min-width:32px;text-align:right;flex-shrink:0">' + sign + h.delta + '</span>'
+          + '<span style="color:var(--muted);font-size:.62rem;white-space:nowrap;flex-shrink:0">' + new Date(h.ts).toLocaleDateString('de-DE') + '</span>'
+          + delBtn
+          + '</div>';
+      }).join('');
+
+  var paginationHtml = all.length > perPage
+    ? '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-top:1px solid var(--border);font-size:.65rem;color:var(--muted)">'
+        + '<button class="btn btn-ghost btn-sm" style="font-size:.6rem;padding:2px 8px" '
+          + (_stvoPage > 0 ? 'onclick="stvoChangePage(' + (_stvoPage-1) + ',\'' + c.id + '\')"' : 'disabled style="opacity:.3"')
+          + '>&#8592; Zurück</button>'
+        + '<span>Seite ' + (_stvoPage+1) + ' / ' + totalPages + '</span>'
+        + '<button class="btn btn-ghost btn-sm" style="font-size:.6rem;padding:2px 8px" '
+          + (_stvoPage < totalPages-1 ? 'onclick="stvoChangePage(' + (_stvoPage+1) + ',\'' + c.id + '\')"' : 'disabled style="opacity:.3"')
+          + '>Weiter &#8594;</button>'
+      + '</div>'
+    : '';
+
+  var btnHtml = canSt
+    ? '<div style="display:flex;gap:6px;margin-top:10px">'
+        + '<button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="openStvoModal(\'' + c.id + '\',\'minus\')">− Punkte</button>'
+        + '<button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" onclick="openStvoModal(\'' + c.id + '\',\'plus\')">+ Punkte</button>'
+      + '</div>'
+    : '';
+
+  return '<hr class="detail-divider"/>'
+    + '<div style="margin-bottom:14px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+        + '<div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">StVO Punkte</div>'
+        + '<div style="font-family:monospace;font-size:1.35rem;font-weight:700;color:var(--accent)">' + pts + ' <span style="font-size:.7rem;font-weight:400">Pkt.</span></div>'
+      + '</div>'
+      + '<div style="background:var(--panel2);border:1px solid var(--border);border-radius:4px;overflow:hidden">'
+        + '<div style="padding:5px 10px;background:var(--bg);border-bottom:1px solid var(--border);font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Letzte Einträge</div>'
+        + histHtml
+        + paginationHtml
+      + '</div>'
+      + btnHtml
+    + '</div>';
+}
+
+function stvoChangePage(page, citId) {
+  _stvoPage = page;
+  openCitizenDetail(citId);
+  setTimeout(function(){ cdSwitchTab('akt'); }, 10);
+}
+
+function deleteStvoEntry(citId, idx) {
+  if(!CUR.isMaster){ toast('Keine Berechtigung!','error'); return; }
+  var cits = ld('cn_citizens');
+  var i = cits.findIndex(function(x){ return String(x.id) === String(citId); });
+  if(i < 0) return;
+  var entry = (cits[i].stvoHistory || [])[idx];
+  if(!entry) return;
+  // Punkte zurückrechnen
+  cits[i].stvoPunkte = Math.max(0, (cits[i].stvoPunkte || 0) - entry.delta);
+  cits[i].stvoHistory.splice(idx, 1);
+  sv('cn_citizens', cits);
+  audit('STVO_DELETE', cits[i].name + ': Eintrag gelöscht – ' + entry.reason + ' (' + (entry.delta > 0 ? '+' : '') + entry.delta + ' Pkt.)');
+  toast('Eintrag gelöscht. Punkte angepasst.', 'success');
+  // Seite ggf. zurücksetzen
+  var newTotal = Math.max(1, Math.ceil(cits[i].stvoHistory.length / 5));
+  if(_stvoPage >= newTotal) _stvoPage = newTotal - 1;
+  openCitizenDetail(citId);
+  setTimeout(function(){ cdSwitchTab('akt'); }, 10);
+}
+
+var _stvoTargetId = null;
+var _stvoMode = 'plus';
+
+function openStvoModal(citId, mode) {
+  if (!CUR.isMaster && !ok('stvo_manage')) { toast('Keine Berechtigung!', 'error'); return; }
+  _stvoTargetId = citId;
+  _stvoMode = mode;
+  var c = ld('cn_citizens').find(function(x) { return x.id === citId; });
+  var pts = c ? (c.stvoPunkte || 0) : 0;
+  document.getElementById('stvoModalTitle').textContent = mode === 'plus' ? 'StVO Punkte hinzufügen' : 'StVO Punkte abziehen';
+  document.getElementById('stvoModalTitle').style.color = mode === 'plus' ? 'var(--danger)' : '#4caf50';
+  document.getElementById('stvoCurrentPts').textContent = pts + ' Punkte';
+  document.getElementById('stvoAmount').value = '';
+  document.getElementById('stvoReason').value = '';
+  document.getElementById('stvoPreview').textContent = '';
+  var sb = document.getElementById('stvoSaveBtn');
+  sb.style.cssText = '';
+  sb.className = mode === 'plus' ? 'btn btn-danger' : 'btn btn-primary';
+  openM('mStvo');
+  setTimeout(function() { document.getElementById('stvoAmount').focus(); }, 100);
+}
+
+function stvoUpdatePreview() {
+  var c = ld('cn_citizens').find(function(x) { return x.id === _stvoTargetId; });
+  var cur = c ? (c.stvoPunkte || 0) : 0;
+  var amt = parseInt(document.getElementById('stvoAmount').value) || 0;
+  var prev = document.getElementById('stvoPreview');
+  if (amt <= 0) { prev.textContent = ''; return; }
+  var newPts = _stvoMode === 'plus' ? cur + amt : Math.max(0, cur - amt);
+  prev.textContent = cur + ' → ' + newPts + ' Pkt.';
+  prev.style.color = _stvoMode === 'plus' ? 'var(--danger)' : '#4caf50';
+}
+
+function saveStvo() {
+  if (!CUR.isMaster && !ok('stvo_manage')) { toast('Keine Berechtigung!', 'error'); return; }
+  var amt = parseInt(document.getElementById('stvoAmount').value) || 0;
+  var reason = document.getElementById('stvoReason').value.trim();
+  if (amt <= 0) { toast('Bitte eine gültige Punktzahl eingeben!', 'error'); return; }
+  if (!reason) { toast('Bitte einen Grund angeben!', 'error'); return; }
+  var cits = ld('cn_citizens');
+  var i = cits.findIndex(function(x) { return x.id === _stvoTargetId; });
+  if (i < 0) return;
+  var delta = _stvoMode === 'plus' ? amt : -amt;
+  var before = cits[i].stvoPunkte || 0;
+  cits[i].stvoPunkte = Math.max(0, before + delta);
+  if (!cits[i].stvoHistory) cits[i].stvoHistory = [];
+  cits[i].stvoHistory.unshift({ delta: delta, reason: reason, officer: CUR.username, before: before, after: cits[i].stvoPunkte, ts: new Date().toISOString() });
+  if (cits[i].stvoHistory.length > 50) cits[i].stvoHistory = cits[i].stvoHistory.slice(0, 50);
+  sv('cn_citizens', cits);
+  audit('STVO_' + (delta > 0 ? 'ADD' : 'SUB'), cits[i].name + ': ' + (delta > 0 ? '+' : '') + delta + ' Pkt. (' + reason + ') → ' + cits[i].stvoPunkte + ' Pkt.');
+  closeM('mStvo');
+  toast((delta > 0 ? '+' : '') + delta + ' StVO Punkte – Neu: ' + cits[i].stvoPunkte + ' Pkt.', delta > 0 ? 'error' : 'success');
+  openCitizenDetail(_stvoTargetId);
+}
+
+// ─────────────── END StVO ───────────────
+
+function deleteAllCitizens(){
+  if(!CUR.isMaster){toast('Keine Berechtigung!','error');return;}
+  var count=ld('cn_citizens').length;
+  if(count===0){toast('Keine Bürger vorhanden.','error');return;}
+  askConfirm('Wirklich ALLE '+count+' Bürger löschen? Diese Aktion kann nicht rückgängig gemacht werden!',function(){
+    sv('cn_citizens',[]);
+    audit('CITIZEN_DELETE_ALL','Alle '+count+' Bürger gelöscht');
+    renderCitizens();
+    toast('Alle '+count+' Bürger wurden gelöscht.','error');
+  });
+}
+
+function updateWantedBadge(){}
+
+function openJobChangeFromCitizen(uid){
+  closeM('mCitizenDetail');
+  openJobChange(uid);
+}
+
+function openAddJobToCitizen(citId){
+  var c=ld('cn_citizens').find(function(c){return String(c.id)===String(citId);});
+  if(!c)return;
+  DETAIL_CIT=citId;
+
+  var jSel=document.getElementById('ajtcJob');
+  var allJobs=ld('cn_jobs');
+
+  // give_job Permission: Benutzer kann nur seinen eigenen Job vergeben
+  var canGive=ok('give_job')&&!CUR.isMaster;
+  if(canGive){
+    // Nur den eigenen Hauptjob anzeigen
+    var myJob=gJ(CUR.mainJob);
+    if(!myJob){ toast('Kein Job zugewiesen – kann keinen Job vergeben!','error'); return; }
+    var myRang=gR(CUR.mainJob,CUR.mainRang);
+    var myLevel=myRang?myRang.level:999;
+    // Nur Ränge unter eigenem Rang
+    var allowedRanks=myJob.ranks.filter(function(r){return r.level<myLevel;});
+    if(!allowedRanks.length){ toast('Kein Rang unter deinem verfügbar!','error'); return; }
+    jSel.innerHTML='<option value="'+myJob.id+'">'+ec(myJob.name)+'</option>';
+    jSel.value=myJob.id;
+    jSel.disabled=true;
+    // Rang-Select befüllen mit erlaubten Rängen
+    var grp=document.getElementById('ajtcRangGrp'),rSel=document.getElementById('ajtcRang');
+    rSel.innerHTML=allowedRanks.map(function(r){return'<option value="'+r.id+'">'+ec(r.name)+' (Lv.'+r.level+')</option>';}).join('');
+    grp.classList.remove('hidden');
+  } else if(CUR.isMaster){
+    // Admin: alle Jobs sichtbar
+    jSel.disabled=false;
+    jSel.innerHTML='<option value="">-- Beruf auswählen --</option>'+allJobs.map(function(j){return'<option value="'+j.id+'">'+ec(j.name)+(j.isSecondJob?' (Zweitberuf)':'')+'</option>';}).join('');
+    document.getElementById('ajtcRangGrp').classList.add('hidden');
+  } else {
+    toast('Keine Berechtigung!','error'); return;
+  }
+
+  document.getElementById('ajtcJobType').value='second';
+  openM('mAddJobToBürger');
+}
+function updateAJTCRang(){
+  if(ok('give_job')&&!CUR.isMaster) return; // bei give_job bereits vorbefüllt
+  var jid=document.getElementById('ajtcJob').value,grp=document.getElementById('ajtcRangGrp'),rSel=document.getElementById('ajtcRang');
+  if(!jid){grp.classList.add('hidden');return;}
+  var j=gJ(jid);if(!j||!j.ranks.length){grp.classList.add('hidden');return;}
+  rSel.innerHTML=j.ranks.map(function(r){return'<option value="'+r.id+'">'+ec(r.name)+' (Lv.'+r.level+')</option>';}).join('');
+  grp.classList.remove('hidden');
+}
+function saveAddJobToCitizen(){
+  var jobType=document.getElementById('ajtcJobType').value;
+  var jid=document.getElementById('ajtcJob').value;
+  var rid=document.getElementById('ajtcRang').value;
+  if(!jid){toast('Bitte einen Beruf auswählen!','error');return;}
+
+  // give_job Permission prüfen: Rang muss unter eigenem sein
+  if(ok('give_job')&&!CUR.isMaster){
+    if(jid!==CUR.mainJob){toast('Du kannst nur deinen eigenen Job vergeben!','error');return;}
+    var myRang=gR(CUR.mainJob,CUR.mainRang);
+    var targetRang=gR(jid,rid);
+    if(myRang&&targetRang&&targetRang.level>=myRang.level){toast('Du kannst nur Ränge unter deinem eigenen vergeben!','error');return;}
+  }
+
+  var cits=ld('cn_citizens'),i=cits.findIndex(function(c){return String(c.id)===String(DETAIL_CIT);});
+  if(i<0)return;
+  if(jobType==='first'){
+    cits[i].jobId=jid; cits[i].rankId=rid||null;
+  } else if(jobType==='second'){
+    if(cits[i].secondJobId){toast('Bürger hat bereits einen zweiten Beruf!','error');return;}
+    cits[i].secondJobId=jid;cits[i].secondRangId=rid||null;
+  }else if(jobType==='third'){
+    if(cits[i].thirdJobId){toast('Bürger hat bereits einen dritten Beruf!','error');return;}
+    cits[i].thirdJobId=jid;cits[i].thirdRangId=rid||null;
+  }
+  cits[i].updatedAt=new Date().toISOString();
+  sv('cn_citizens',cits);
+
+  // Verknüpften Account synchronisieren — per linkedUserId ODER per identifier suchen
+  var lu=null;
+  if(cits[i].linkedUserId) lu=gU(cits[i].linkedUserId);
+  if(!lu && cits[i].identifier){
+    var allUsers=ld('cn_users');
+    lu=allUsers.find(function(u){
+      if(!u.identifier)return false;
+      return u.identifier===cits[i].identifier
+        ||u.identifier===cits[i].identifier.replace('license:','')
+        ||'license:'+u.identifier===cits[i].identifier;
+    })||null;
+  }
+  if(lu){
+    // Citizen mit User verknüpfen falls noch nicht
+    if(!cits[i].linkedUserId){cits[i].linkedUserId=lu.id;sv('cn_citizens',cits);}
+    // Alle Jobs direkt übertragen
+    var uArr=ld('cn_users'),ui=uArr.findIndex(function(u){return u.id===lu.id;});
+    if(ui>=0){
+      uArr[ui].mainJob   = cits[i].jobId      || cits[i].job       || null;
+      uArr[ui].mainRang  = cits[i].rankId     || cits[i].job_rank  || null;
+      uArr[ui].secondJob = cits[i].secondJobId|| cits[i].second_job|| null;
+      uArr[ui].secondRang= cits[i].secondRangId||cits[i].second_rank||null;
+      uArr[ui].thirdJob  = cits[i].thirdJobId || cits[i].third_job || null;
+      uArr[ui].thirdRang = cits[i].thirdRangId|| cits[i].third_rank|| null;
+      sv('cn_users',uArr);
+      if(lu.id===CUR.id){CUR=gU(CUR.id);renderAusweis();document.getElementById('topJobBadge').textContent=jN(CUR.mainJob)||'--';document.getElementById('topRangBadge').textContent=rN(CUR.mainJob,CUR.mainRang)||'--';}
+    }
+  }
+
+  var jsel=document.getElementById('ajtcJob');
+  if(jsel) jsel.disabled=false;
+  var typeLabel=jobType==='first'?'Hauptberuf':jobType==='second'?'Zweitberuf':'Dritter Beruf';
+  audit('CITIZEN_JOB_ADD',cits[i].name+' -> '+typeLabel+': '+jN(jid)+(rid?' | Rang: '+rN(jid,rid):''));
+  closeM('mAddJobToBürger');
+  openCitizenDetail(DETAIL_CIT);
+  toast(typeLabel+' gesetzt: '+jN(jid)+(rid?' | '+rN(jid,rid):''),'success');
+}
+function removeJobFromCitizen(citId,jobType){
+  var cits=ld('cn_citizens'),i=cits.findIndex(function(c){return String(c.id)===String(citId);});
+  if(i<0)return;
+  var jobName='';
+  if(jobType==='second'){
+    jobName=jN(cits[i].secondJobId)||'Zweitberuf';
+    cits[i].secondJobId=null;cits[i].secondRangId=null;
+  }else if(jobType==='third'){
+    jobName=jN(cits[i].thirdJobId)||'Dritter Beruf';
+    cits[i].thirdJobId=null;cits[i].thirdRangId=null;
+  }
+  cits[i].updatedAt=new Date().toISOString();
+  sv('cn_citizens',cits);
+  // Verknüpften User synchronisieren
+  var luR=null;
+  if(cits[i].linkedUserId) luR=gU(cits[i].linkedUserId);
+  if(!luR&&cits[i].identifier){
+    var allU=ld('cn_users');
+    luR=allU.find(function(u){if(!u.identifier)return false;return u.identifier===cits[i].identifier||'license:'+u.identifier===cits[i].identifier||u.identifier===cits[i].identifier.replace('license:','');})||null;
+  }
+  if(luR){
+    var uA=ld('cn_users'),uI=uA.findIndex(function(u){return u.id===luR.id;});
+    if(uI>=0){
+      uA[uI].mainJob=cits[i].jobId||cits[i].job||null;uA[uI].mainRang=cits[i].rankId||cits[i].job_rank||null;
+      uA[uI].secondJob=cits[i].secondJobId||cits[i].second_job||null;uA[uI].secondRang=cits[i].secondRangId||cits[i].second_rank||null;
+      uA[uI].thirdJob=cits[i].thirdJobId||cits[i].third_job||null;uA[uI].thirdRang=cits[i].thirdRangId||cits[i].third_rank||null;
+      sv('cn_users',uA);
+    }
+  }
+  audit('CITIZEN_JOB_REMOVE',cits[i].name+' -> '+jobName+' removed');
+  openCitizenDetail(citId);
+  toast(jobName+' entfernt.','success');
+}
+function toggleImmigrationVerification(citId){
+  var cits=ld('cn_citizens'),i=cits.findIndex(function(c){return String(c.id)===String(citId);});
+  if(i<0)return;
+  var checked=document.getElementById('citImmigrationCheck').checked;
+  cits[i].immigrationVerification=checked;
+  cits[i].updatedAt=new Date().toISOString();
+  sv('cn_citizens',cits);
+  audit('IMMIGRATION_VERIFICATION',cits[i].name+' -> '+(checked?'Granted':'Revoked'));
+  toast('Einreise-Verifizierung '+(checked?'erteilt':'entzogen')+'.','success');
+}
+
+
+function renderDocs(){
+  var list=document.getElementById('docList'),q=(document.getElementById('docSearch').value||'').toLowerCase();
+  var arr=ld('cn_documents');
+  var userLevel=getDocAccessLevel();
+  
+
+  if(q)arr=arr.filter(function(d){return d.title.toLowerCase().indexOf(q)>=0||d.type.toLowerCase().indexOf(q)>=0;});
+  
+
+  arr=arr.filter(function(d){
+
+    if(CUR.isMaster)return true;
+
+    if(d.creatorId===CUR.id)return true;
+
+    if(d.accessList&&d.accessList.indexOf(CUR.id)>=0)return true;
+
+    if(ok('doc_read')&&userLevel>0){
+      var docLevel=d.level||2;
+      if(userLevel<docLevel)return false;
+      // Rang-Sichtbarkeits-Sperre prüfen
+      return docCanBeSeenBy(d,CUR);
+    }
+    return false;
+  });
+  
+  document.getElementById('docCount').textContent=arr.length+' Dokumente';
+  if(!arr.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F4C4;</div><div>Keine Dokumente</div></div>';return;}
+  list.innerHTML=arr.map(function(d){
+    var levelBadge='<span class="badge badge-muted" style="font-size:.55rem">L'+((d.level||2))+'</span>';
+    return'<div class="card" onclick="openDocDetail(\''+d.id+'\')">'+
+    '<div class="card-left"><div class="card-id">DOK-'+String(d.nr||d.id||0).padStart(4,'0')+'</div><div class="card-label">'+ec(d.type)+'</div><div class="card-title">'+ec(d.title)+'</div></div>'+
+    '<div class="card-right">'+levelBadge+'<span class="card-meta">'+(d.citizenId?ec(cN(d.citizenId)):'')+'</span><span class="card-meta">'+ec(d.date)+'</span><span class="card-arrow">&#x203A;</span></div></div>';
+  }).join('');
+}
+function getDocTypes(){
+  var stored=localStorage.getItem('cn_doc_types');
+  if(stored)return JSON.parse(stored);
+  return [
+    {name:'Strafakte',headerText:'STRAFAKTE - COAST.NET\nAusgestellt am: {DATUM} | Beamter: {BEAMTER}\n' + '='.repeat(50),template:'Bürger: {CITIZEN}\n\n--- ANSCHULDIGUNGEN ---\n\n\n--- BEWEISE ---\n\n\n--- MAßNAHMEN ---\n\n'},
+    {name:'Strafanzeige',headerText:'STRAFANZEIGE - COAST.NET\nAufgenommen am: {DATUM} | Beamter: {BEAMTER}\n' + '='.repeat(50),template:'Anzeige gegen: {BÜRGER}\n\n--- SACHVERHALT ---\n\n\n--- ZEUGEN ---\n\n'},
+    {name:'Bußgeldbescheid',headerText:'BUßGELDBESCHEID - COAST.NET\nAusgestellt am: {DATUM} | Beamter: {BEAMTER}\n' + '='.repeat(50),template:'An: {BÜRGER}\n\n--- VERSTOESS ---\n\n\n--- STRAFE ---\n\n'},
+    {name:'Haftbefehl',headerText:'HAFTBEFEHL - COAST.NET\nAusgestellt am: {DATUM} | Beamter: {BEAMTER}\n' + '='.repeat(50),template:'Person: {BÜRGER}\n\n--- HAFTGRUND ---\n\n\n--- GERICHTLICHE ANORDNUNG ---\n\n'},
+    {name:'Entscheidung',headerText:'ENTSCHEIDUNG - COAST.NET\nAusgestellt am: {DATUM} | Behörde: {BEAMTER}\n' + '='.repeat(50),template:'Betreff: {BÜRGER}\n\n--- ENTSCHEIDUNGSINHALT ---\n\n'}
+  ];
+}
+function fillTypeSel(){
+  var sel=document.getElementById('dType');
+  var allTypes=getDocTypes();
+  var allowed=allTypes;
+  if(!CUR.isMaster){
+    var r=gR(CUR.mainJob,CUR.mainRang);
+    var permitted=r&&r.allowedDocTypes;
+    if(permitted&&permitted.length>0){
+      allowed=allTypes.filter(function(t){return permitted.indexOf(t.name)>=0;});
+    }
+  }
+  if(!allowed.length)allowed=allTypes;
+  sel.innerHTML=allowed.map(function(t){return'<option value="'+ec(t.name)+'">'+ec(t.name)+'</option>';}).join('');
+}
+function fillPlaceholders(text,cName){
+  return text
+    .replace(/{CITIZEN}/g,cName||'___________')
+    .replace(/{BUERGER}/g,cName||'___________')
+    .replace(/{DATE}/g,td())
+    .replace(/{DATUM}/g,td())
+    .replace(/{OFFICER}/g,CUR.username)
+    .replace(/{BEAMTER}/g,CUR.username)
+    .replace(/{NAME}/g,cName||'___________');
+}
+function updateDocHeader(){
+  var sel=document.getElementById('dType');
+  var types=getDocTypes();
+  var t=types.find(function(x){return x.name===sel.value;});
+  var hEl=document.getElementById('dHeader');
+  if(!t||!t.headerText){if(hEl)hEl.style.display='none';return;}
+  var cSel=document.getElementById('dBürger');
+  var cName=cSel.value?cN(cSel.value):'___________';
+  if(hEl){hEl.value=fillPlaceholders(t.headerText,cName);hEl.style.display='block';hEl.rows=t.headerText.split('\n').length+1;}
+}
+function loadDocTemplate(){
+  var sel=document.getElementById('dType');
+  var editId=document.getElementById('dEditId').value;
+  if(editId){updateDocHeader();return;}
+  var types=getDocTypes();
+  var t=types.find(function(x){return x.name===sel.value;});
+  var cSel=document.getElementById('dBürger');
+  var cName=cSel.value?cN(cSel.value):'___________';
+  updateDocHeader();
+  if(!t||!t.template)return;
+  document.getElementById('dContent').value=fillPlaceholders(t.template,cName);
+}
+function openDocAccessModal(){
+  var blocked={};
+  try{blocked=JSON.parse(document.getElementById('dBlockedRanks').value||'{}');}catch(e){}
+  var allJobs=ld('cn_jobs').filter(function(j){return!j.isSecondJob;});
+  var html=allJobs.map(function(job){
+    var rows=job.ranks.map(function(rank){
+      var key=job.id+'::'+rank.id;
+      var isBlocked=blocked[key]===true;
+      var ck=isBlocked?'':' checked';
+      return'<label style="display:flex;align-items:center;gap:6px;font-size:.73rem;padding:6px 10px;background:var(--panel);border:1px solid var(--border);border-radius:3px;cursor:pointer;min-width:160px">'+
+        '<input type="checkbox" id="da_'+job.id+'__'+rank.id+'"'+ck+'/>'+
+        '<span>'+(isBlocked?'❌':'✅')+' </span>'+
+        '<span>'+ec(rank.name)+'</span>'+
+        '<span style="color:var(--muted);font-size:.6rem;margin-left:2px">(Lv.'+rank.level+')</span></label>';
+    }).join('');
+    return'<div style="margin-bottom:16px">'+
+      '<div style="font-size:.68rem;color:var(--accent);font-weight:600;margin-bottom:7px;text-transform:uppercase;letter-spacing:.08em">'+ec(job.name)+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px">'+rows+'</div></div>';
+  }).join('');
+  document.getElementById('mDABody').innerHTML=
+    '<div style="font-size:.72rem;color:var(--text2);margin-bottom:16px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:3px">'+
+    'Angehakt ✅ = Rang <strong>kann</strong> das Dokument sehen. Nicht angehakt ❌ = Rang ist gesperrt.</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px">'+
+    html+'</div>';
+  // Icon live updaten wenn Checkbox klick
+  document.getElementById('mDABody').querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change',function(){
+      var icon=this.parentElement.querySelector('span:nth-child(2)');
+      if(icon)icon.textContent=this.checked?'✅ ':'❌ ';
+    });
+  });
+  openM('mDocAccess');
+}
+
+function saveDocAccessRules(){
+  var blocked={};
+  var allJobs=ld('cn_jobs').filter(function(j){return!j.isSecondJob;});
+  allJobs.forEach(function(job){
+    job.ranks.forEach(function(rank){
+      var el=document.getElementById('da_'+job.id+'__'+rank.id);
+      if(el&&!el.checked)blocked[job.id+'::'+rank.id]=true;
+    });
+  });
+  document.getElementById('dBlockedRanks').value=JSON.stringify(blocked);
+  var count=Object.keys(blocked).length;
+  var btn=document.getElementById('dAccessRulesBtn');
+  if(btn)btn.textContent='⚙ Rang-Sichtbarkeit'+(count>0?' ('+count+' gesperrt)':'');
+  closeM('mDocAccess');
+  toast('Rang-Sichtbarkeit übernommen.','success');
+}
+
+function docCanBeSeenBy(d,user){
+  if(!d.blockedRanks)return true;
+  // Prüfe ob einer der Jobs/Ränge des Users gesperrt ist
+  var jobs=[
+    {job:user.mainJob,rang:user.mainRang},
+    {job:user.secondJob,rang:user.secondRang}
+  ];
+  for(var ji=0;ji<jobs.length;ji++){
+    var jj=jobs[ji];
+    if(!jj.job)continue;
+    var key=jj.job+'::'+jj.rang;
+    if(d.blockedRanks[key]===true)return false;
+  }
+  return true;
+}
+
+
+function openDocModal(editId){
+  if(!CUR.isMaster&&!ok('doc_create')){toast('Keine Berechtigung!','error');return;}
+  var sel=document.getElementById('dBürger');
+  sel.innerHTML='<option value="">-- keine --</option>'+ld('cn_citizens').map(function(c){return'<option value="'+c.id+'">'+ec(c.name)+' (CIT-'+String(c.nr||c.id||0).padStart(4,'0')+')</option>';}).join('');
+  fillTypeSel();
+  document.getElementById('dType').onchange=function(){loadDocTemplate();};
+  document.getElementById('dBürger').onchange=function(){loadDocTemplate();};
+  document.getElementById('dEditId').value=editId||'';
+  document.getElementById('mDocTitle').textContent=editId?'Edit Document':'Dokument erstellen';
+  if(editId){
+    var d=ld('cn_documents').find(function(d){return d.id===editId;});
+    document.getElementById('dType').value=d.type||getDocTypes()[0].name;
+    document.getElementById('dTitle').value=d.title||'';
+    document.getElementById('dBürger').value=d.citizenId||'';
+    document.getElementById('dContent').value=d.content||'';
+    document.getElementById('dNote').value=d.note||'';
+    document.getElementById('dLevel').value=d.level||2;
+    TEMP_ACCESS_LIST=(d.accessList||[]).slice();
+    var blocked=d.blockedRanks||{};
+    document.getElementById('dBlockedRanks').value=JSON.stringify(blocked);
+    var bCount=Object.keys(blocked).length;
+    var btn=document.getElementById('dAccessRulesBtn');
+    if(btn)btn.textContent='⚙ Rang-Sichtbarkeit'+(bCount>0?' ('+bCount+' gesperrt)':'');
+    // Sonder-Bearbeitung laden
+    document.getElementById('dEditAccessLevel').value=d.editAccessLevel||0;
+    document.getElementById('dEditAccessList').value=JSON.stringify(d.editAccessList||[]);
+    var eaBtn=document.getElementById('dEditAccessBtn');
+    var eaCount=(d.editAccessList||[]).length;
+    if(eaBtn)eaBtn.textContent='✏️ Sonder-Bearbeitung'+((d.editAccessLevel||0)>0||eaCount>0?' (aktiv)':'');
+  }else{
+    ['dTitle','dContent','dNote'].forEach(function(f){document.getElementById(f).value='';});
+    document.getElementById('dBürger').value='';
+    document.getElementById('dLevel').value='2';
+    document.getElementById('dBlockedRanks').value='{}';
+    document.getElementById('dEditAccessLevel').value='0';
+    document.getElementById('dEditAccessList').value='[]';
+    var btn2=document.getElementById('dAccessRulesBtn');
+    if(btn2)btn2.textContent='⚙ Rang-Sichtbarkeit einstellen';
+    var eaBtn2=document.getElementById('dEditAccessBtn');
+    if(eaBtn2)eaBtn2.textContent='✏️ Sonder-Bearbeitung einstellen';
+    TEMP_ACCESS_LIST=[];
+    setTimeout(loadDocTemplate,50);
+  }
+  renderAccessList();
+  openM('mDoc');
+}
+function renderAccessList(){
+  var el=document.getElementById('dAccessList');
+  if(TEMP_ACCESS_LIST.length===0){
+    el.innerHTML='<div style="color:var(--muted);font-size:.7rem">No additional persons</div>';
+    return;
+  }
+  el.innerHTML=TEMP_ACCESS_LIST.map(function(uid){
+    var u=gU(uid);
+    return'<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">'+
+      '<span>'+(u?ec(u.username)+' ('+ec(u.civId)+')':'Unbekannt')+'</span>'+
+      '<button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:.6rem" onclick="removeAccess(\''+uid+'\')">X</button></div>';
+  }).join('');
+}
+function openAddAccess(){
+  var sel=document.getElementById('addAccessUser');
+  sel.innerHTML='<option value="">-- Person auswählen --</option>'+
+    ld('cn_users').filter(function(u){return!u.isMaster&&TEMP_ACCESS_LIST.indexOf(u.id)<0;}).map(function(u){
+      return'<option value="'+u.id+'">'+ec(u.username)+' ('+ec(u.civId)+')</option>';
+    }).join('');
+  openM('mAddAccess');
+}
+function saveAddAccess(){
+  var uid=document.getElementById('addAccessUser').value;
+  if(!uid){toast('Bitte eine Person auswählen!','error');return;}
+  if(TEMP_ACCESS_LIST.indexOf(uid)>=0){toast('Person bereits in der Liste!','error');return;}
+  TEMP_ACCESS_LIST.push(uid);
+  renderAccessList();
+  closeM('mAddAccess');
+}
+function removeAccess(uid){
+  TEMP_ACCESS_LIST=TEMP_ACCESS_LIST.filter(function(id){return id!==uid;});
+  renderAccessList();
+}
+function saveDoc(){
+  var title=document.getElementById('dTitle').value.trim();if(!title){toast('Titel ist erforderlich!','error');return;}
+  var type=document.getElementById('dType').value,citId=document.getElementById('dBürger').value,
+      content=document.getElementById('dContent').value,note=document.getElementById('dNote').value.trim(),
+      level=parseInt(document.getElementById('dLevel').value)||2,
+      editId=document.getElementById('dEditId').value;
+  var arr=ld('cn_documents');
+  var headerVal=document.getElementById('dHeader')?document.getElementById('dHeader').value:'';
+  var blockedRanks={};
+  try{blockedRanks=JSON.parse(document.getElementById('dBlockedRanks').value||'{}');}catch(e){}
+  var editAccessLevel=parseInt(document.getElementById('dEditAccessLevel').value)||0;
+  var editAccessList=[];
+  try{editAccessList=JSON.parse(document.getElementById('dEditAccessList').value||'[]');}catch(e){}
+  if(editId){
+    var i=arr.findIndex(function(d){return d.id===editId;});
+    if(i>=0){
+      arr[i].title=title;arr[i].type=type;arr[i].citizenId=citId;arr[i].content=content;
+      arr[i].headerText=headerVal;
+      arr[i].note=note;arr[i].level=level;arr[i].accessList=TEMP_ACCESS_LIST.slice();
+      arr[i].blockedRanks=blockedRanks;
+      arr[i].editAccessLevel=editAccessLevel;
+      arr[i].editAccessList=editAccessList;
+      arr[i].updatedAt=new Date().toISOString();
+    }
+    audit('DOC_EDIT','Dok bearb: '+title);
+  }else{
+    var nr=nId();
+    arr.unshift({
+      id:'doc_'+nr,nr:nr,title:title,type:type,citizenId:citId,content:content,
+      headerText:headerVal,note:note,
+      level:level,accessList:TEMP_ACCESS_LIST.slice(),
+      blockedRanks:blockedRanks,
+      editAccessLevel:editAccessLevel,
+      editAccessList:editAccessList,
+      creatorId:CUR.id,creatorName:CUR.username,
+      creatorJob:jN(CUR.mainJob)||'--',creatorRang:rN(CUR.mainJob,CUR.mainRang)||'--',
+      date:td(),createdAt:new Date().toISOString()
+    });
+    audit('DOC_CREATE','New document: '+title+' ('+type+') Level '+level);
+  }
+  sv('cn_documents',arr);renderDocs();closeM('mDoc');
+  toast(editId?'Dokument aktualisiert.':'Dokument gespeichert.','success');
+}
+function _checkDocRankRule(field){
+// NEU: Sonder-Bearbeitung Modal öffnen
+function openDocEditAccessModal(){
+  var allUsers=ld('cn_users');
+  var curLevel=parseInt(document.getElementById('dEditAccessLevel').value)||0;
+  var curList=[];
+  try{curList=JSON.parse(document.getElementById('dEditAccessList').value||'[]');}catch(e){}
+  document.getElementById('deaLevel').value=String(curLevel);
+  var sel=document.getElementById('deaPersonSelect');
+  sel.innerHTML='<option value="">-- Person auswählen --</option>'+allUsers.filter(function(u){return!u.isMaster;}).map(function(u){return'<option value="'+u.id+'">'+ec(u.username)+(u.civId?' ('+ec(u.civId)+')':'')+'</option>';}).join('');
+  renderDeaPersonList(curList);
+  openM('mDocEditAccess');
+}
+function renderDeaPersonList(list){
+  var el=document.getElementById('deaPersonList');
+  if(!list||!list.length){el.innerHTML='<div style="color:var(--muted);font-size:.7rem">Keine zusätzlichen Personen</div>';return;}
+  el.innerHTML=list.map(function(uid){var u=gU(uid);return'<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)"><span>'+(u?ec(u.username)+' ('+ec(u.civId||'--')+')':'Unbekannt')+'</span><button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:.6rem" onclick="removeDeaPerson(\''+uid+'\')">X</button></div>';}).join('');
+}
+function addDeaPerson(){
+  var uid=document.getElementById('deaPersonSelect').value;
+  if(!uid){toast('Bitte eine Person auswählen!','error');return;}
+  var curList=[];
+  try{curList=JSON.parse(document.getElementById('dEditAccessList').value||'[]');}catch(e){}
+  if(curList.indexOf(uid)>=0){toast('Person bereits eingetragen!','error');return;}
+  curList.push(uid);
+  document.getElementById('dEditAccessList').value=JSON.stringify(curList);
+  renderDeaPersonList(curList);
+}
+function removeDeaPerson(uid){
+  var curList=[];
+  try{curList=JSON.parse(document.getElementById('dEditAccessList').value||'[]');}catch(e){}
+  curList=curList.filter(function(id){return id!==uid;});
+  document.getElementById('dEditAccessList').value=JSON.stringify(curList);
+  renderDeaPersonList(curList);
+}
+function saveDocEditAccess(){
+  var lvl=parseInt(document.getElementById('deaLevel').value)||0;
+  var curList=[];
+  try{curList=JSON.parse(document.getElementById('dEditAccessList').value||'[]');}catch(e){}
+  document.getElementById('dEditAccessLevel').value=String(lvl);
+  var eaBtn=document.getElementById('dEditAccessBtn');
+  if(eaBtn)eaBtn.textContent='✏️ Sonder-Bearbeitung'+(lvl>0||curList.length>0?' (aktiv)':' einstellen');
+  closeM('mDocEditAccess');
+  toast('Sonder-Bearbeitung übernommen.','success');
+}
+// Prüft ob CUR das Dokument bearbeiten darf (inkl. Sonder-Bearbeitung)
+function canEditDoc(d){
+  if(CUR.isMaster)return true;
+  // Sonder-Bearbeitung: direkte Person
+  if(d.editAccessList&&d.editAccessList.indexOf(CUR.id)>=0)return true;
+  // Sonder-Bearbeitung: Mindest-Level
+  if(d.editAccessLevel&&d.editAccessLevel>0){
+    var myJobs=[{job:CUR.mainJob,rang:CUR.mainRang},{job:CUR.secondJob,rang:CUR.secondRang}];
+    var passes=myJobs.some(function(mj){if(!mj.job)return false;var r=gR(mj.job,mj.rang);return r&&(r.docAccessLevel||0)>=d.editAccessLevel;});
+    if(passes)return true;
+  }
+  // Typ-Editlevel prüfen
+  var types=getDocTypes();
+  var t=types.find(function(x){return x.name===d.type;});
+  if(t&&t.editLevel&&t.editLevel>0){
+    var myJobs2=[{job:CUR.mainJob,rang:CUR.mainRang},{job:CUR.secondJob,rang:CUR.secondRang}];
+    var passesType=myJobs2.some(function(mj){if(!mj.job)return false;var r=gR(mj.job,mj.rang);return r&&(r.docAccessLevel||0)>=t.editLevel;});
+    if(!passesType)return false;
+  }
+  // Ersteller darf eigene Dokumente bearbeiten
+  if(d.creatorId===CUR.id&&ok('doc_create'))return true;
+  // Rang-Regel
+  return _checkDocRankRule('docEditRules');
+}
+// Ende Sonder-Bearbeitung
+function _checkDocRankRule(field){
+  // Prüft ob CUR's Rang/Job die Regel für das Feld (docEditRules/docDeleteRules) erfüllt
+  var myJobs=[
+    {job:CUR.mainJob,rang:CUR.mainRang},
+    {job:CUR.secondJob,rang:CUR.secondRang},
+    {job:CUR.thirdJob,rang:CUR.thirdRang}
+  ];
+  return myJobs.some(function(mj){
+    if(!mj.job)return false;
+    var r=gR(mj.job,mj.rang);
+    var rules=r&&r[field];
+    if(!rules||!rules.length)return false;
+    return rules.some(function(rule){
+      if(!rule.jobId)return true;
+      if(rule.jobId!==mj.job)return false;
+      var myLv=r?(r.level||0):0;
+      return myLv>=(rule.minLevel||0);
+    });
+  });
+}
+function openDocDetail(id){
+  DETAIL_DOC=id;var d=ld('cn_documents').find(function(d){return d.id===id;});if(!d)return;
+  var levelNames=['','Public','Officers','Middle Rangs','High Rangs','Highest Rangs'];
+  var levelBadge='<span class="badge badge-accent">Level '+(d.level||2)+' - '+(levelNames[d.level||2]||'')+'</span>';
+  var accessListHTML='';
+  if(d.accessList&&d.accessList.length>0){
+    accessListHTML='<hr class="detail-divider"/><div class="detail-label" style="margin-bottom:6px">Additional Access ('+d.accessList.length+')</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+      d.accessList.map(function(uid){
+        var u=gU(uid);
+        return u?'<span class="badge badge-accent">'+ec(u.username)+'</span>':'';
+      }).join('')+'</div>';
+  }
+  document.getElementById('mDDTitle').innerHTML='<span style="color:var(--danger)">'+ec(d.type)+'</span> '+ec(d.title);
+  document.getElementById('mDDBody').innerHTML=
+    '<div class="detail-grid">'+
+    '<div class="detail-field"><div class="detail-label">Type</div><div class="detail-value">'+ec(d.type)+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Date</div><div class="detail-value">'+ec(d.date)+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Creator</div><div class="detail-value">'+ec(d.creatorName)+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Job / Rang</div><div class="detail-value">'+ec(d.creatorJob)+' / '+ec(d.creatorRang)+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Bürger</div><div class="detail-value">'+(d.citizenId?ec(cN(d.citizenId)):'--')+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Visibility Level</div><div class="detail-value">'+levelBadge+'</div></div>'+
+    '</div>'+accessListHTML+
+    (d.headerText?'<hr class="detail-divider"/><div class="detail-label" style="margin-bottom:6px;color:var(--danger)">Required Text</div><div style="font-size:.78rem;line-height:1.6;color:var(--text2);white-space:pre-wrap;background:rgba(190,6,6,.06);padding:12px 14px;border:1px solid rgba(190,6,6,.25);font-family:monospace">'+ec(d.headerText)+'</div>':'')+
+    (d.content?'<hr class="detail-divider"/><div class="detail-label" style="margin-bottom:8px">Content</div><div style="font-size:.88rem;line-height:1.7;color:var(--text2);white-space:pre-wrap;background:var(--panel2);padding:14px;border:1px solid var(--border)">'+ec(d.content)+'</div>':'')+
+    (d.note?'<hr class="detail-divider"/><div class="detail-label" style="margin-bottom:4px">Note</div><div style="font-size:.82rem;color:var(--muted)">'+ec(d.note)+'</div>':'');
+  
+  var canEdit=canEditDoc(d);
+  var canDelete=CUR.isMaster||_checkDocRankRule('docDeleteRules');
+  sh('mDDEditBtn',canEdit);sh('mDDDelBtn',canDelete);
+  document.getElementById('mDDEditBtn').onclick=function(){closeM('mDocDetail');openDocModal(id);};
+  document.getElementById('mDDDelBtn').onclick=function(){
+    var t=d.title;
+    askConfirm('Dokument wirklich löschen "'+t+'"?',function(){
+      sv('cn_documents',ld('cn_documents').filter(function(x){return x.id!==DETAIL_DOC;}));
+      audit('DOC_DELETE','Document deleted: '+t);
+      closeM('mDocDetail');renderDocs();toast('Dokument gelöscht.','error');
+    });
+  };
+  openM('mDocDetail');
+}
+
+function renderCars(){
+  var list=document.getElementById('carList'),q=(document.getElementById('carSearch').value||'').toLowerCase();
+  var arr=ld('cn_cars');
+  if(q)arr=arr.filter(function(c){return c.model.toLowerCase().indexOf(q)>=0||c.plate.toLowerCase().indexOf(q)>=0;});
+  document.getElementById('carCount').textContent=arr.length+' Fahrzeuge';
+  document.getElementById('btnAddCar').style.display=CUR.isMaster?'flex':'none';
+  if(!arr.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F697;</div><div>Keine Fahrzeuge</div></div>';return;}
+  list.innerHTML=arr.map(function(c){return'<div class="card" onclick="openCarDetail(\''+c.id+'\')">'+
+    '<div class="card-left"><div class="card-id">'+ec(c.plate)+'</div><div class="card-label">Vehicle</div><div class="card-title">'+ec(c.model)+'</div></div>'+
+    '<div class="card-right"><span class="card-meta">'+(c.ownerId?ec(cN(c.ownerId)):'--')+'</span><span class="card-arrow">&#x203A;</span></div></div>';}).join('');
+}
+function openCarModal(editId){
+  if(!CUR.isMaster){toast('Keine Berechtigung!','error');return;}
+  var sel=document.getElementById('carBesitzer');
+  sel.innerHTML='<option value="">-- kein Besitzer --</option>'+ld('cn_citizens').map(function(c){return'<option value="'+c.id+'">'+ec(c.name)+' (CIT-'+String(c.nr||c.id||0).padStart(4,'0')+')</option>';}).join('');
+  document.getElementById('carEditId').value=editId||'';
+  document.getElementById('mCarTitle').textContent=editId?'Fahrzeug bearbeiten':'Fahrzeug hinzufügen';
+  if(editId){var c=ld('cn_cars').find(function(c){return c.id===editId;});document.getElementById('carModel').value=c.model||'';document.getElementById('carPlate').value=c.plate||'';document.getElementById('carBesitzer').value=c.ownerId||'';}
+  else{['carModel','carPlate'].forEach(function(f){document.getElementById(f).value='';});document.getElementById('carBesitzer').value='';}
+  openM('mCar');
+}
+function saveCar(){
+  var model=document.getElementById('carModel').value.trim(),plate=document.getElementById('carPlate').value.trim().toUpperCase(),
+      owner=document.getElementById('carBesitzer').value,editId=document.getElementById('carEditId').value;
+  if(!model||!plate){toast('Modell und Kennzeichen erforderlich!','error');return;}
+  var arr=ld('cn_cars');
+  if(arr.find(function(c){return c.plate===plate&&c.id!==editId;})){toast('Kennzeichen bereits vergeben!','error');return;}
+  if(editId){var i=arr.findIndex(function(c){return c.id===editId;});if(i>=0){arr[i].model=model;arr[i].plate=plate;arr[i].ownerId=owner;}audit('CAR_EDIT','Vehicle edited: '+plate);}
+  else{var nr=nId();arr.unshift({id:'car_'+nr,nr:nr,model:model,plate:plate,ownerId:owner,createdAt:new Date().toISOString()});audit('CAR_CREATE','Vehicle: '+plate+' ('+model+')');}
+  sv('cn_cars',arr);renderCars();closeM('mCar');toast(editId?'Fahrzeug aktualisiert.':'Fahrzeug eingetragen.','success');
+}
+function openCarDetail(id){
+  DETAIL_CAR=id;var c=ld('cn_cars').find(function(c){return c.id===id;});if(!c)return;
+  document.getElementById('mCarDTitle').textContent=c.plate+' -- '+c.model;
+  document.getElementById('mCarDBody').innerHTML=
+    '<div class="detail-grid">'+
+    '<div class="detail-field"><div class="detail-label">Modell</div><div class="detail-value">'+ec(c.model)+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">License Plate</div><div class="detail-value">'+ec(c.plate)+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Besitzer</div><div class="detail-value">'+(c.ownerId?ec(cN(c.ownerId)):'--')+'</div></div>'+
+    '<div class="detail-field"><div class="detail-label">Registriert</div><div class="detail-value">'+new Date(c.createdAt).toLocaleDateString('de-DE')+'</div></div>'+
+    '</div>'+(c.ownerId?'<hr class="detail-divider"/><button class="btn btn-ghost btn-sm" onclick="closeM(\'mCarDetail\');showTab(\'citizen\');setTimeout(function(){openCitizenDetail(\''+c.ownerId+'\');},80)">Offen Bürger Profile</button>':'');
+  sh('mCarDEditBtn',CUR.isMaster);sh('mCarDDelBtn',CUR.isMaster);
+  document.getElementById('mCarDEditBtn').onclick=function(){closeM('mCarDetail');openCarModal(id);};
+  document.getElementById('mCarDDelBtn').onclick=function(){
+    var p=c.plate;
+    askConfirm('Fahrzeug wirklich löschen "'+p+'"?',function(){
+      sv('cn_cars',ld('cn_cars').filter(function(x){return x.id!==DETAIL_CAR;}));
+      audit('CAR_DELETE','Vehicle deleted: '+p);
+      closeM('mCarDetail');renderCars();toast('Fahrzeug gelöscht.','error');
+    });
+  };
+  openM('mCarDetail');
+}
+
+function renderLexikon(){
+  var grid=document.getElementById('lexikonGrid'),q=(document.getElementById('lexikonSearch').value||'').toLowerCase();
+  var arr=ld('cn_lexikon');
+  if(!CUR.isMaster)arr=arr.filter(function(x){return x.isActive;});
+  if(q)arr=arr.filter(function(x){return x.title.toLowerCase().indexOf(q)>=0||(x.content||'').toLowerCase().indexOf(q)>=0;});
+  if(!arr.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">&#x1F4DA;</div><div>Keine Einträge</div></div>';return;}
+  grid.innerHTML=arr.map(function(x){return'<div class="lexikon-card" onclick="openLexikonDetail(\''+x.id+'\')">'+
+    '<div class="lexikon-card-cat">'+ec(x.category||'General')+'</div>'+
+    '<div class="lexikon-card-title">'+ec(x.title)+'</div>'+
+    '<div class="lexikon-card-preview">'+ec(x.content||'')+'</div></div>';}).join('');
+}
+function openLexikonModal(editId){
+  if(!CUR.isMaster){toast('Keine Berechtigung!','error');return;}
+  document.getElementById('lexEditId').value=editId||'';
+  document.getElementById('mLexTitle').textContent=editId?'Edit Entry':'New Entry';
+  if(editId){var x=ld('cn_lexikon').find(function(x){return x.id===editId;});document.getElementById('lexTitle').value=x.title||'';document.getElementById('lexCat').value=x.category||'';document.getElementById('lexContent').value=x.content||'';document.getElementById('lexActive').value=x.isActive?'1':'0';}
+  else{['lexTitle','lexCat','lexContent'].forEach(function(f){document.getElementById(f).value='';});document.getElementById('lexActive').value='1';}
+  closeM('mLexDetail');openM('mLex');
+}
+function saveLexikon(){
+  var title=document.getElementById('lexTitle').value.trim(),cat=document.getElementById('lexCat').value.trim(),
+      content=document.getElementById('lexContent').value.trim(),active=document.getElementById('lexActive').value==='1',
+      editId=document.getElementById('lexEditId').value;
+  if(!title||!content){toast('Titel und Inhalt erforderlich!','error');return;}
+  var arr=ld('cn_lexikon');
+  if(editId){var i=arr.findIndex(function(x){return x.id===editId;});if(i>=0){arr[i].title=title;arr[i].category=cat;arr[i].content=content;arr[i].isActive=active;arr[i].updatedAt=new Date().toISOString();}audit('LEX_EDIT','Entry: '+title);}
+  else{var nr=nId();arr.unshift({id:'lex_'+nr,nr:nr,title:title,category:cat,content:content,isActive:active,createdAt:new Date().toISOString()});audit('LEX_CREATE','Entry created: '+title);}
+  sv('cn_lexikon',arr);renderLexikon();closeM('mLex');toast(editId?'Entry updated.':'Entry created.','success');
+}
+function openLexikonDetail(id){
+  DETAIL_LEX=id;var x=ld('cn_lexikon').find(function(x){return x.id===id;});if(!x)return;
+  document.getElementById('mLDTitle').textContent=x.title;
+  document.getElementById('mLDBody').innerHTML=
+    '<div style="margin-bottom:12px"><span class="badge badge-muted">'+ec(x.category||'General')+'</span>'+
+    '<span class="badge '+(x.isActive?'badge-green':'badge-muted')+'" style="margin-left:6px">'+(x.isActive?'Active':'Inactive')+'</span></div>'+
+    '<hr class="detail-divider"/>'+
+    '<div style="font-size:.88rem;line-height:1.7;color:var(--text2)">'+ec(x.content).replace(/\n/g,'<br/>')+'</div>'+
+    '<hr class="detail-divider"/>'+
+    '<div style="font-size:.62rem;color:var(--muted)">Erstellt: '+new Date(x.createdAt).toLocaleDateString('de-DE')+(x.updatedAt?' – Geändert: '+new Date(x.updatedAt).toLocaleDateString('de-DE'):'')+'</div>';
+  sh('mLDEditBtn',CUR.isMaster);sh('mLDDelBtn',CUR.isMaster);
+  document.getElementById('mLDEditBtn').onclick=function(){openLexikonModal(id);};
+  document.getElementById('mLDDelBtn').onclick=function(){
+    var t=x.title;
+    askConfirm('Really delete entry "'+t+'"?',function(){
+      sv('cn_lexikon',ld('cn_lexikon').filter(function(y){return y.id!==DETAIL_LEX;}));
+      audit('LEX_DELETE','Entry deleted: '+t);
+      closeM('mLexDetail');renderLexikon();toast('Eintrag gelöscht.','error');
+    });
+  };
+  openM('mLexDetail');
+}
+
+function adminSection(s){
+  var content=document.getElementById('adminContent');
+  if(!CUR.isMaster){
+    var allowed=[];
+    if(ok('job_manage')||ok('job_create'))allowed.push('jobs');
+    if(!allowed.length){
+      content.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F512;</div><div>Keine Berechtigung</div></div>';
+      return;
+    }
+    if(allowed.indexOf(s)<0){
+      content.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F512;</div><div>Keine Berechtigung</div></div>';
+      return;
+    }
+  }
+  if(s==='users'){
+    var users=ld('cn_users');
+    content.innerHTML='<div class="section-header" style="margin-bottom:14px"><div class="section-title" style="font-size:1rem">Users ('+users.length+')</div></div>'+
+      '<div class="table-wrap"><table><thead><tr><th>CIV-ID</th><th>IC-Name</th><th>Main Job</th><th>Rang</th><th>Zweitberuf</th><th>Linked</th><th></th></tr></thead><tbody>'+
+      users.map(function(u){return'<tr>'+
+        '<td style="font-family:monospace;color:var(--danger)">'+ec(u.civId||'--')+'</td>'+
+        '<td>'+ec(u.username)+(u.isMaster?' <span class="badge badge-danger">Master</span>':'')+'</td>'+
+        '<td>'+ec(jN(u.mainJob)||'--')+'</td><td>'+ec(rN(u.mainJob,u.mainRang)||'--')+'</td>'+
+        '<td>'+ec(jN(u.secondJob)||'--')+'</td>'+
+        '<td>'+(u.linkedCitizenId?ec(cN(u.linkedCitizenId)):'<span style="color:var(--muted)">--</span>')+'</td>'+
+        '<td>'+(u.isMaster?'':'<button class="btn btn-ghost btn-sm" onclick="openAdminUser(\''+u.id+'\')">Bearbeiten</button>')+'</td>'+
+        '</tr>';}).join('')+'</tbody></table></div>';
+  }
+  if(s==='jobs'){
+    var jobs=ld('cn_jobs');
+    var canManage=CUR.isMaster||ok('job_manage');
+    var canCreate=canManage||ok('job_create');
+    content.innerHTML='<div class="section-header" style="margin-bottom:14px"><div class="section-title" style="font-size:1rem">Jobs ('+jobs.length+')</div>'+
+      (canCreate?'<button class="btn btn-primary btn-sm" onclick="openAdminJob(null)">+ Create Job</button>':'')+
+      (!canManage&&ok('job_create')?'<div style="font-size:.62rem;color:var(--muted);margin-top:4px;margin-left:8px">&#x26A0; Nur neue Jobs erstellen möglich – kein Bearbeiten/Löschen</div>':'')+
+      '</div>'+
+      '<div class="card-list">'+jobs.map(function(j){return'<div class="card" style="cursor:default">'+
+        '<div class="card-left"><div class="card-label">'+(j.isSystem?'System':j.isSecondJob?'Zweitberuf':'Job')+'</div><div class="card-title">'+ec(j.name)+'</div></div>'+
+        '<div class="card-right"><span class="card-meta">'+j.ranks.length+' Rangs</span>'+
+        (canManage&&(!j.isSystem||CUR.isMaster)?'<button class="btn btn-ghost btn-sm" onclick="openAdminJob(\''+j.id+'\')">Bearbeiten</button>':'')+
+        (canManage&&(!j.isSystem||CUR.isMaster)?'<button class="btn btn-danger btn-sm" onclick="promptDeleteJob(\''+j.id+'\')">Löschen</button>':'')+
+        '</div></div>';}).join('')+'</div>';
+  }
+  if(s==='passwords'){
+    var users=ld('cn_users');
+    content.innerHTML='<div class="section-title" style="font-size:1rem;margin-bottom:12px">Alle Passwörter</div>'+
+      '<div style="padding:10px 14px;background:rgba(190,6,6,.08);border:1px solid rgba(190,6,6,.2);font-size:.72rem;color:var(--danger);margin-bottom:14px">Only visible to Master account.</div>'+
+      '<div class="table-wrap"><table><thead><tr><th>CIV-ID</th><th>IC-Name</th><th>Passwort</th></tr></thead><tbody>'+
+      users.map(function(u){return'<tr><td style="font-family:monospace;color:var(--danger)">'+ec(u.civId||'--')+'</td><td>'+ec(u.username)+'</td><td style="font-family:monospace;color:var(--accent)">'+ec(u.password)+'</td></tr>';}).join('')+
+      '</tbody></table></div>';
+  }
+  if(s==='audit'){
+    var logs=ld('cn_audit').slice(0,100);
+    content.innerHTML='<div class="section-title" style="font-size:1rem;margin-bottom:12px">Aktivitätslog (last 100)</div>'+
+      '<div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead><tbody>'+
+      logs.map(function(l){return'<tr><td>'+new Date(l.ts).toLocaleString('de-DE')+'</td><td>'+ec(l.username||l.userId||'--')+'</td><td><span class="badge badge-muted">'+ec(l.action)+'</span></td><td>'+ec(l.detail||'--')+'</td></tr>';}).join('')+
+      '</tbody></table></div>';
+  }
+  if(s==='tokens'){
+    // Show local tokens from localStorage
+    var users = ld('cn_users');
+    content.innerHTML =
+      '<div class="section-header" style="margin-bottom:14px">'+
+      '<div class="section-title" style="font-size:1rem">Registrierungs-Tokens</div>'+
+      '<button class="btn btn-ghost btn-sm" onclick="loadTokensFromServer()">&#x21BB; Vom Server laden</button></div>'+
+      '<div style="padding:10px 14px;background:rgba(200,169,110,.06);border:1px solid rgba(200,169,110,.2);font-size:.72rem;color:var(--text2);margin-bottom:14px">'+
+      'Tokens are automatically generated when joining. Each player gets exactly one token to register.</div>'+
+      '<div id="tokenTableWrap">'+
+      '<div class="table-wrap"><table><thead><tr>'+
+      '<th>Token</th><th>Spielername (FiveM)</th><th>Identifier</th><th>Status</th><th>Genutzt von</th><th>Datum</th></tr></thead><tbody>'+
+      users.filter(function(u){return u.registrationToken;}).map(function(u){
+        return'<tr>'+
+          '<td style="font-family:monospace;color:var(--accent);letter-spacing:.1em">'+ec(u.registrationToken||'--')+'</td>'+
+          '<td>'+ec(u.username||'--')+'</td>'+
+          '<td style="font-size:.62rem;color:var(--muted)">'+ec(u.identifier||'--')+'</td>'+
+          '<td><span class="badge badge-green">Genutzt</span></td>'+
+          '<td>'+ec(u.username||'--')+'</td>'+
+          '<td>'+new Date(u.createdAt||Date.now()).toLocaleDateString('de-DE')+'</td>'+
+          '</tr>';
+      }).join('')+
+      '</tbody></table></div></div>';
+    // If FiveM available: load real DB tokens
+    loadTokensFromServer();
+  }
+}
+
+function promptDeleteJob(id){
+  var j=gJ(id);if(!j)return;
+  askConfirm('Beruf wirklich löschen "'+j.name+'"? Users will be set to Arbeitslos.',function(){
+    var users=ld('cn_users');
+    users.forEach(function(u){if(u.mainJob===id){u.mainJob='job_arbeitslos';u.mainRang='rank_al_1';}});
+    sv('cn_users',users);sv('cn_jobs',ld('cn_jobs').filter(function(x){return x.id!==id;}));
+    audit('JOB_DELETE','Job deleted: '+j.name);
+    adminSection('jobs');toast('Beruf gelöscht.','error');
+  });
+}
+
+function openAdminUser(uid){
+  EDIT_USER=uid;var u=gU(uid);
+  var jobs=ld('cn_jobs').filter(function(j){return!j.isSecondJob;}),sJobs=ld('cn_jobs').filter(function(j){return j.isSecondJob;});
+  var rOpts='';if(u.mainJob){var j=gJ(u.mainJob);if(j)rOpts=j.ranks.map(function(r){return'<option value="'+r.id+'"'+(r.id===u.mainRang?' selected':'')+'>'+ec(r.name)+' (Lv.'+r.level+')</option>';}).join('');}
+  document.getElementById('mAUTitle').textContent='User: '+u.username+' ('+( u.civId||'--')+')';
+  document.getElementById('mAUBody').innerHTML=
+    '<div class="form-group"><label class="form-label">Main Job</label>'+
+    '<select class="form-select" id="auJob" onchange="updAURang()">'+
+    jobs.map(function(j){return'<option value="'+j.id+'"'+(j.id===u.mainJob?' selected':'')+'>'+ec(j.name)+'</option>';}).join('')+'</select></div>'+
+    '<div class="form-group"><label class="form-label">Rang</label><select class="form-select" id="auRang">'+rOpts+'</select></div>'+
+    '<div class="form-group"><label class="form-label">Zweitberuf</label>'+
+    '<select class="form-select" id="auSecond"><option value="">-- kein Zweitberuf --</option>'+
+    sJobs.map(function(j){return'<option value="'+j.id+'"'+(j.id===u.secondJob?' selected':'')+'>'+ec(j.name)+'</option>';}).join('')+'</select></div>'+
+    '<hr class="detail-divider"/>'+
+    '<div class="form-label" style="margin-bottom:8px">Individuelle Zusatzrechte</div>'+
+    '<div class="rights-grid">'+ALL_RIGHTS.filter(function(r){return r!=='job_create';}).map(function(r){
+      var labels={
+        doc_create:'Dokumente erstellen',doc_read:'Dokumente lesen',doc_edit:'Dokumente bearbeiten',
+        doc_delete:'Dokumente löschen',
+        wanted_manage:'Wanted verwalten',map_view:'Live-Karte',
+        stvo_manage:'StVO Punkte vergeben',give_job:'Job vergeben',citizen_view:'Bürger sehen',job_manage:'Jobs erstellen/bearbeiten',doc_type_manage:'Dok-Typen & Berechtigungen'
+      };
+      return'<label class="right-item"><input type="checkbox" id="ar_'+r+'"'+((u.rights||[]).indexOf(r)>=0?' checked':'')+'/> '+(labels[r]||r)+'</label>';
+    }).join('')+'</div>'+
+    '<hr class="detail-divider" style="margin:10px 0"/>'+
+    '<div class="form-label" style="margin-bottom:4px;color:var(--accent)">&#x1F511; Charakter-Sonderrecht</div>'+
+    '<div style="font-size:.65rem;color:var(--muted);margin-bottom:8px">Dieses Recht wirkt nur als individuelles Charakter-Recht – nicht über Rang-Berechtigungen vergebbar.</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
+    '<label class="right-item" style="border:1px solid var(--accent);padding:4px 8px;border-radius:4px"><input type="checkbox" id="ar_job_create"'+((u.rights||[]).indexOf('job_create')>=0?' checked':'')+'/> &#x1F4BC; Jobs erstellen (Berufe &amp; Ränge)</label>'+
+    '</div>';
+  openM('mAdminUser');
+}
+function updAURang(){
+  var j=gJ(document.getElementById('auJob').value),sel=document.getElementById('auRang');
+  sel.innerHTML=j?j.ranks.map(function(r){return'<option value="'+r.id+'">'+ec(r.name)+' (Lv.'+r.level+')</option>';}).join(''):'';
+}
+function saveAdminUser(){
+  var mainJob=document.getElementById('auJob').value,mainRang=document.getElementById('auRang').value,
+      secondJob=document.getElementById('auSecond').value,j2=secondJob?gJ(secondJob):null,
+      secondRang=j2&&j2.ranks.length?j2.ranks[0].id:null;
+  var rights=ALL_RIGHTS.filter(function(r){var el=document.getElementById('ar_'+r);return el&&el.checked;});
+  var users=ld('cn_users'),i=users.findIndex(function(u){return u.id===EDIT_USER;});
+  if(i>=0){users[i].mainJob=mainJob;users[i].mainRang=mainRang;users[i].secondJob=secondJob||null;users[i].secondRang=secondRang;users[i].rights=rights;}
+  sv('cn_users',users);audit('ADMIN_USER_EDIT','User edited: '+(users[i]&&users[i].username));
+  closeM('mAdminUser');adminSection('users');toast('Benutzer gespeichert.','success');
+}
+
+function openAdminJob(jobId){
+  EDIT_JOB=jobId;var j=jobId?gJ(jobId):null;
+  document.getElementById('mAJTitle').textContent=jobId?('Job: '+(j&&j.name)):'Neuer Beruf';
+  document.getElementById('mAJBody').innerHTML=
+    '<div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="ajName" value="'+ec(j&&j.name||'')+'"/></div>'+
+    '<div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="ajDesc" style="height:70px">'+ec(j&&j.description||'')+'</textarea></div>'+
+    '<hr class="detail-divider"/>'+
+    '<div class="section-header"><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Rangs</div>'+
+    '<button class="btn btn-ghost btn-sm" onclick="addRang()">+ Rang</button></div>'+
+    '<div id="ajRangs">'+(j&&j.ranks||[]).map(function(r,i){return rankHTML(r,i);}).join('')+'</div>';
+  openM('mAdminJob');
+}
+function rankDocHTML(i,allowedTypes){
+  var types=getDocTypes();
+  return types.map(function(t){
+    var checked=(!allowedTypes||allowedTypes.length===0||allowedTypes.indexOf(t.name)>=0)?' checked':'';
+    return'<label style="display:flex;align-items:center;gap:4px;font-size:.65rem;color:var(--text2);white-space:nowrap">'+
+      '<input type="checkbox" id="rdoc_'+i+'_'+t.name.replace(/\s/g,'_')+'"'+checked+'/> '+ec(t.name)+'</label>';
+  }).join('');
+}
+function getRankDocTypes(i){
+  var types=getDocTypes();
+  var allowed=types.filter(function(t){
+    var el=document.getElementById('rdoc_'+i+'_'+t.name.replace(/\s/g,'_'));
+    return el&&el.checked;
+  }).map(function(t){return t.name;});
+  return allowed;
+}
+var _editRankIdx=null;
+
+function openRankEdit(i){
+  _editRankIdx=i;
+  var rangName=document.getElementById('rn_'+i)?document.getElementById('rn_'+i).value:'';
+  document.getElementById('mRETitle').textContent='Rang-Einstellungen: '+rangName;
+  
+  var mapRules=[];var profRules=[];var allowedDocs=[];var crossVis={};
+  var docEditRules=[];var docDeleteRules=[];
+  try{mapRules=JSON.parse(document.getElementById('rMapRules_'+i).value||'[]');}catch(e){}
+  try{profRules=JSON.parse(document.getElementById('rProfRules_'+i).value||'[]');}catch(e){}
+  try{allowedDocs=JSON.parse(document.getElementById('rDocTypes_'+i).value||'[]');}catch(e){}
+  try{crossVis=JSON.parse(document.getElementById('rCrossVis_'+i).value||'{}');}catch(e){}
+  try{docEditRules=JSON.parse(document.getElementById('rDocEditRules_'+i).value||'[]');}catch(e){}
+  try{docDeleteRules=JSON.parse(document.getElementById('rDocDeleteRules_'+i).value||'[]');}catch(e){}
+  
+  var allJobs=ld('cn_jobs');
+  var allTypes=getDocTypes();
+
+  var mapRows=mapRules.map(function(r,ri){return buildRuleRow('re_map',ri,r,allJobs);}).join('');
+  var profRows=profRules.map(function(r,ri){return buildRuleRow('re_prof',ri,r,allJobs);}).join('');
+  var editRows=docEditRules.map(function(r,ri){return buildRuleRow('re_dedit',ri,r,allJobs);}).join('');
+  var delRows=docDeleteRules.map(function(r,ri){return buildRuleRow('re_ddel',ri,r,allJobs);}).join('');
+
+  var docBoxes=allTypes.map(function(t){
+    var ck=(!allowedDocs.length||allowedDocs.indexOf(t.name)>=0)?' checked':'';
+    return'<label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:6px 10px;background:var(--panel);border:1px solid var(--border);border-radius:3px;cursor:pointer">'+
+      '<input type="checkbox" id="re_doc_'+t.name.replace(/\s/g,'_')+'"'+ck+'/> '+ec(t.name)+'</label>';
+  }).join('');
+
+  var otherJobs=allJobs.filter(function(j){return!j.isSecondJob;});
+  var crossHTML=otherJobs.map(function(job){
+    var rows=job.ranks.map(function(rank){
+      var key=job.id+'::'+rank.id;
+      var ck=(crossVis[key]!==false)?' checked':'';
+      return'<label style="display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--text2);padding:3px 8px;background:var(--panel);border:1px solid var(--border);border-radius:2px;white-space:nowrap">'+
+        '<input type="checkbox" id="re_cv_'+job.id+'__'+rank.id+'"'+ck+'/> '+
+        ec(rank.name)+' <span style="color:var(--muted);font-size:.58rem">(Lv.'+rank.level+')</span></label>';
+    }).join('');
+    return'<div style="margin-bottom:12px">'+
+      '<div style="font-size:.65rem;color:var(--accent);margin-bottom:5px;font-weight:600">'+ec(job.name)+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:5px">'+rows+'</div></div>';
+  }).join('');
+
+  function ruleSection(label,hint,id,rows,addFn){
+    return'<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:6px">'+label+'</div>'+
+      '<div style="font-size:.63rem;color:var(--text2);margin-bottom:6px">'+hint+'</div>'+
+      '<div id="'+id+'">'+rows+'</div>'+
+      '<button class="btn btn-ghost btn-sm" style="margin-top:5px;font-size:.67rem" onclick="reAddRule(\''+addFn+'\')">+ Job-Regel</button>'+
+      '<hr style="border-color:var(--border);margin:14px 0"/>';
+  }
+
+  document.getElementById('mREBody').innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">'+
+    '<div>'+
+    ruleSection('🗺 Karte — Wer sieht diesen Rang?','Leer = alle.','re_mapRows',mapRows,'re_map')+
+    ruleSection('👤 Profil — Wer kann es einsehen?','Leer = alle.','re_profRows',profRows,'re_prof')+
+    '<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:6px">📄 Erlaubte Dokumenttypen</div>'+
+    '<div style="font-size:.63rem;color:var(--text2);margin-bottom:6px">Alle angehakt = alle erlaubt.</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px" id="re_docBoxes">'+docBoxes+'</div>'+
+    '</div>'+
+    '<div>'+
+    ruleSection('✏️ Doks. bearbeiten — Welche Jobs dürfen?','Leer = niemand (außer Master/Ersteller). Jobs eintragen die bearbeiten dürfen.','re_deditRows',editRows,'re_dedit')+
+    ruleSection('🗑 Doks. löschen — Welche Jobs dürfen?','Leer = niemand (außer Master). Jobs eintragen die löschen dürfen.','re_ddelRows',delRows,'re_ddel')+
+    '<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:6px">🔗 Karte: Sichtbarkeit anderer Ränge</div>'+
+    '<div style="font-size:.63rem;color:var(--text2);margin-bottom:10px">Welche Ränge anderer Jobs kann dieser Rang sehen?</div>'+
+    '<div id="re_crossVis">'+crossHTML+'</div>'+
+    '</div>'+
+    '</div>';
+  openM('mRankEdit');
+}
+
+  // Karte-Regeln
+  var mapRows=mapRules.map(function(r,ri){
+    return buildRuleRow('re_map',ri,r,allJobs);
+  }).join('');
+  // Profil-Regeln
+  var profRows=profRules.map(function(r,ri){
+    return buildRuleRow('re_prof',ri,r,allJobs);
+  }).join('');
+  // Dokument-Checkboxen
+  var docBoxes=allTypes.map(function(t){
+    var ck=(!allowedDocs.length||allowedDocs.indexOf(t.name)>=0)?' checked':'';
+    return'<label style="display:flex;align-items:center;gap:6px;font-size:.75rem;padding:6px 10px;background:var(--panel);border:1px solid var(--border);border-radius:3px;cursor:pointer">'+
+      '<input type="checkbox" id="re_doc_'+t.name.replace(/\s/g,'_')+'"'+ck+'/> '+ec(t.name)+'</label>';
+  }).join('');
+
+  // Cross-Visibility Matrix
+  var otherJobs=allJobs.filter(function(j){return!j.isSecondJob;});
+  var crossHTML=otherJobs.map(function(job){
+    var rows=job.ranks.map(function(rank){
+      var key=job.id+'::'+rank.id;
+      var ck=(crossVis[key]!==false)?' checked':'';
+      return'<label style="display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--text2);padding:3px 8px;background:var(--panel);border:1px solid var(--border);border-radius:2px;white-space:nowrap">'+
+        '<input type="checkbox" id="re_cv_'+job.id+'__'+rank.id+'"'+ck+'/> '+
+        ec(rank.name)+' <span style="color:var(--muted);font-size:.58rem">(Lv.'+rank.level+')</span></label>';
+    }).join('');
+    return'<div style="margin-bottom:12px">'+
+      '<div style="font-size:.65rem;color:var(--accent);margin-bottom:5px;font-weight:600">'+ec(job.name)+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:5px">'+rows+'</div></div>';
+  }).join('');
+
+  document.getElementById('mREBody').innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">'+
+    // Linke Spalte
+    '<div>'+
+    '<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">🗺 Karte — Wer sieht diesen Rang?</div>'+
+    '<div style="font-size:.63rem;color:var(--text2);margin-bottom:8px">Leer = alle können ihn sehen.</div>'+
+    '<div id="re_mapRows">'+mapRows+'</div>'+
+    '<button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:.67rem" onclick="reAddRule(\'re_map\')">+ Job-Regel hinzufügen</button>'+
+    '<hr style="border-color:var(--border);margin:16px 0"/>'+
+    '<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">👤 Profil — Wer kann das Profil einsehen?</div>'+
+    '<div style="font-size:.63rem;color:var(--text2);margin-bottom:8px">Leer = alle können es einsehen.</div>'+
+    '<div id="re_profRows">'+profRows+'</div>'+
+    '<button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:.67rem" onclick="reAddRule(\'re_prof\')">+ Job-Regel hinzufügen</button>'+
+    '<hr style="border-color:var(--border);margin:16px 0"/>'+
+    '<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">📄 Erlaubte Dokumenttypen</div>'+
+    '<div style="font-size:.63rem;color:var(--text2);margin-bottom:8px">Alle angehakt = alle Typen erlaubt.</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px" id="re_docBoxes">'+docBoxes+'</div>'+
+    '</div>'+
+    // Rechte Spalte
+    '<div>'+
+    '<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px">🔗 Sichtbarkeit anderer Ränge auf der Karte</div>'+
+    '<div style="font-size:.63rem;color:var(--text2);margin-bottom:12px">Welche Ränge anderer Jobs kann dieser Rang auf der Livemap sehen?</div>'+
+    '<div id="re_crossVis">'+crossHTML+'</div>'+
+    '</div>'+
+    '</div>';
+  openM('mRankEdit');
+}
+
+function buildRuleRow(prefix,ri,rule,allJobs){
+  var mainJobs=allJobs.filter(function(j){return!j.isSecondJob;});
+  var jobOpts='<option value="">-- alle Jobs --</option>'+mainJobs.map(function(j){
+    return'<option value="'+j.id+'"'+(rule.jobId===j.id?' selected':'')+'>'+ec(j.name)+'</option>';
+  }).join('');
+  return'<div class="re_ruleRow" style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'+
+    '<select class="form-select" id="'+prefix+'_job_'+ri+'" style="flex:1;font-size:.72rem">'+jobOpts+'</select>'+
+    '<span style="font-size:.65rem;color:var(--muted);white-space:nowrap">ab Lv.</span>'+
+    '<input type="number" class="form-input" id="'+prefix+'_lv_'+ri+'" value="'+(rule.minLevel||0)+'" min="0" max="999" style="width:60px;font-size:.72rem"/>'+
+    '<button class="btn btn-danger btn-sm" style="padding:4px 8px" onclick="this.parentElement.remove()">✕</button>'+
+    '</div>';
+}
+
+function reAddRule(prefix){
+  var container=document.getElementById(prefix+'Rows');
+  var existing=container.querySelectorAll('.re_ruleRow').length;
+  var d=document.createElement('div');
+  d.innerHTML=buildRuleRow(prefix,existing,{jobId:'',minLevel:0},ld('cn_jobs'));
+  container.appendChild(d.firstElementChild);
+}
+
+function saveRankEdit(){
+  var i=_editRankIdx;
+  if(i===null)return;
+  function readRules(prefix,containerId){
+    var rules=[];
+    document.querySelectorAll('#'+containerId+' .re_ruleRow').forEach(function(row,ri){
+      var jEl=document.getElementById(prefix+'_job_'+ri),lEl=document.getElementById(prefix+'_lv_'+ri);
+      if(jEl&&lEl)rules.push({jobId:jEl.value,minLevel:parseInt(lEl.value)||0});
+    });
+    return rules;
+  }
+  var mapRules=readRules('re_map','re_mapRows');
+  var profRules=readRules('re_prof','re_profRows');
+  var docEditRules=readRules('re_dedit','re_deditRows');
+  var docDeleteRules=readRules('re_ddel','re_ddelRows');
+  var allTypes=getDocTypes();
+  var allowedDocs=allTypes.filter(function(t){
+    var el=document.getElementById('re_doc_'+t.name.replace(/\s/g,'_'));
+    return el&&el.checked;
+  }).map(function(t){return t.name;});
+  if(allowedDocs.length===allTypes.length)allowedDocs=[];
+  var crossVis={};
+  var allJobs=ld('cn_jobs').filter(function(j){return!j.isSecondJob;});
+  allJobs.forEach(function(job){
+    job.ranks.forEach(function(rank){
+      var el=document.getElementById('re_cv_'+job.id+'__'+rank.id);
+      if(el)crossVis[job.id+'::'+rank.id]=el.checked;
+    });
+  });
+  document.getElementById('rMapRules_'+i).value=JSON.stringify(mapRules);
+  document.getElementById('rProfRules_'+i).value=JSON.stringify(profRules);
+  document.getElementById('rDocTypes_'+i).value=JSON.stringify(allowedDocs);
+  document.getElementById('rCrossVis_'+i).value=JSON.stringify(crossVis);
+  document.getElementById('rDocEditRules_'+i).value=JSON.stringify(docEditRules);
+  document.getElementById('rDocDeleteRules_'+i).value=JSON.stringify(docDeleteRules);
+  var btn=document.querySelector('[data-ri="'+i+'"] .btn-ghost');
+  if(btn){
+    var badges='';
+    if(mapRules.length)badges+=' 🗺'+mapRules.length;
+    if(profRules.length)badges+=' 👤'+profRules.length;
+    if(allowedDocs.length)badges+=' 📄'+allowedDocs.length;
+    if(docEditRules.length)badges+=' ✏️'+docEditRules.length;
+    if(docDeleteRules.length)badges+=' 🗑'+docDeleteRules.length;
+    btn.textContent='⚙ Erweitert'+(badges?badges:'');
+  }
+  closeM('mRankEdit');
+  toast('Rang-Einstellungen übernommen.','success');
+}
+
+function rankRulesHTML(type,i,rules){}
+function getRankRulesFromDOM(type,i){return[];}
+function updateRankBtn(type,i,count){}
+function addRankRule(type,i){}
+function removeRankRule(type,i,ri){}
+function toggleRankSection(type,i){}
+
+function rankHTML(r,i){
+  var mapRules=(r&&r.mapAccessRules)||[];
+  var profRules=(r&&r.profileAccessRules)||[];
+  var allowedDocs=(r&&r.allowedDocTypes)||[];
+  var allTypes=getDocTypes();
+  var badges='';
+  if(mapRules.length)badges+=' <span style="font-size:.55rem;background:rgba(200,169,110,.15);color:var(--accent);padding:1px 5px;border-radius:2px">🗺'+mapRules.length+'</span>';
+  if(profRules.length)badges+=' <span style="font-size:.55rem;background:rgba(200,169,110,.15);color:var(--accent);padding:1px 5px;border-radius:2px">👤'+profRules.length+'</span>';
+  if(allowedDocs.length&&allowedDocs.length<allTypes.length)badges+=' <span style="font-size:.55rem;background:rgba(200,169,110,.15);color:var(--accent);padding:1px 5px;border-radius:2px">📄'+allowedDocs.length+'</span>';
+  return'<div style="background:var(--panel2);border:1px solid var(--border);padding:10px 12px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap" data-ri="'+i+'">'+
+    '<input class="form-input" style="flex:1;min-width:130px" placeholder="Rang Name" value="'+ec(r&&r.name||'')+'" id="rn_'+i+'"/>'+
+    '<input class="form-input" style="width:72px" type="number" placeholder="Level" value="'+(r&&r.level||(i+1))+'" id="rl_'+i+'"/>'+
+    '<select class="form-select" style="width:95px" id="rdl_'+i+'" title="Document Access Level">'+
+    '<option value="0"'+((!r||!r.docAccessLevel||r.docAccessLevel===0)?' selected':'')+'>Doc: 0</option>'+
+    '<option value="1"'+((r&&r.docAccessLevel===1)?' selected':'')+'>Doc: 1</option>'+
+    '<option value="2"'+((r&&r.docAccessLevel===2)?' selected':'')+'>Doc: 2</option>'+
+    '<option value="3"'+((r&&r.docAccessLevel===3)?' selected':'')+'>Doc: 3</option>'+
+    '<option value="4"'+((r&&r.docAccessLevel===4)?' selected':'')+'>Doc: 4</option>'+
+    '<option value="5"'+((r&&r.docAccessLevel===5)?' selected':'')+'>Doc: 5</option>'+
+    '</select>'+
+    '<button class="btn btn-ghost btn-sm" style="font-size:.68rem;white-space:nowrap" onclick="openRankEdit('+i+')">⚙ Erweitert'+badges+'</button>'+
+    '<button class="btn btn-danger btn-sm" onclick="this.closest(\'[data-ri]\').remove()">X</button>'+
+    '<div style="width:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+
+    ALL_RIGHTS.filter(function(right){return right!=='job_create';}).map(function(right){
+      var labels={
+        doc_create:'Doks. erstellen',doc_read:'Doks. lesen',doc_edit:'Doks. bearbeiten',
+        doc_delete:'Doks. löschen',
+        wanted_manage:'Wanted',map_view:'Live-Karte',
+        stvo_manage:'StVO Punkte',give_job:'Job vergeben',citizen_view:'Bürger sehen',job_manage:'Jobs erstellen',doc_type_manage:'Dok-Typen'
+      };
+      return'<label style="display:flex;align-items:center;gap:4px;font-size:.67rem;color:var(--text2)">'+
+      '<input type="checkbox" id="rr_'+i+'_'+right+'"'+((r&&r.rights||[]).indexOf(right)>=0?' checked':'')+'/> '+(labels[right]||right)+'</label>';}).join('')+
+    '</div>'+
+    // Versteckte Datenfelder für Rang-Einstellungen
+    '<input type="hidden" id="rMapRules_'+i+'" value=\''+JSON.stringify(mapRules)+'\'>'+
+    '<input type="hidden" id="rProfRules_'+i+'" value=\''+JSON.stringify(profRules)+'\'>'+
+    '<input type="hidden" id="rDocTypes_'+i+'" value=\''+JSON.stringify(allowedDocs)+'\'>'+
+    '<input type="hidden" id="rCrossVis_'+i+'" value=\''+JSON.stringify((r&&r.crossVisibility)||{})+'\'>'+
+    '<input type="hidden" id="rDocEditRules_'+i+'" value=\''+JSON.stringify((r&&r.docEditRules)||[])+'\'>'+
+    '<input type="hidden" id="rDocDeleteRules_'+i+'" value=\''+JSON.stringify((r&&r.docDeleteRules)||[])+'\'>'+
+    '</div>';
+}
+function addRang(){
+  var c=document.getElementById('ajRangs'),d=document.createElement('div');
+  d.innerHTML=rankHTML({name:'',level:rankIdx,rights:[],docAccessLevel:2,mapAccessRules:[],profileAccessRules:[],allowedDocTypes:[]},rankIdx);
+  c.appendChild(d.firstElementChild);rankIdx++;
+}
+function saveAdminJob(){
+  var name=document.getElementById('ajName').value.trim(),desc=document.getElementById('ajDesc').value.trim();
+  if(!name){toast('Name ist erforderlich!','error');return;}
+  var rankEls=document.querySelectorAll('#ajRangs [data-ri]');
+  var ranks=Array.from(rankEls).map(function(el){
+    var i=el.getAttribute('data-ri');
+    var rights=ALL_RIGHTS.filter(function(r){var el2=el.querySelector('#rr_'+i+'_'+r);return el2&&el2.checked;});
+    var docAccessLevel=parseInt((el.querySelector('#rdl_'+i)&&el.querySelector('#rdl_'+i).value)||'0');
+    var existing=EDIT_JOB&&gJ(EDIT_JOB)&&gJ(EDIT_JOB).ranks[i];
+    var mapRules=[];var profRules=[];var allowedDocs=[];var crossVis={};var docEditRules=[];var docDeleteRules=[];
+    try{mapRules=JSON.parse((el.querySelector('#rMapRules_'+i)||{value:'[]'}).value);}catch(e){}
+    try{profRules=JSON.parse((el.querySelector('#rProfRules_'+i)||{value:'[]'}).value);}catch(e){}
+    try{allowedDocs=JSON.parse((el.querySelector('#rDocTypes_'+i)||{value:'[]'}).value);}catch(e){}
+    try{crossVis=JSON.parse((el.querySelector('#rCrossVis_'+i)||{value:'{}'}).value);}catch(e){}
+    try{docEditRules=JSON.parse((el.querySelector('#rDocEditRules_'+i)||{value:'[]'}).value);}catch(e){}
+    try{docDeleteRules=JSON.parse((el.querySelector('#rDocDeleteRules_'+i)||{value:'[]'}).value);}catch(e){}
+    return{
+      id:existing&&existing.id||'rank_'+nId(),
+      name:(el.querySelector('#rn_'+i)&&el.querySelector('#rn_'+i).value.trim())||'Rang',
+      level:parseInt((el.querySelector('#rl_'+i)&&el.querySelector('#rl_'+i).value)||'1'),
+      rights:rights,
+      docAccessLevel:docAccessLevel,
+      mapAccessRules:mapRules,
+      profileAccessRules:profRules,
+      allowedDocTypes:allowedDocs,
+      crossVisibility:crossVis,
+      docEditRules:docEditRules,
+      docDeleteRules:docDeleteRules
+    };
+  });
+  var jobs=ld('cn_jobs');
+  if(EDIT_JOB){var i=jobs.findIndex(function(j){return j.id===EDIT_JOB;});if(i>=0){jobs[i].name=name;jobs[i].description=desc;jobs[i].ranks=ranks;}audit('JOB_EDIT','Job edited: '+name);}
+  else{jobs.push({id:'job_'+nId(),name:name,description:desc,isSystem:false,isSecondJob:false,ranks:ranks});audit('JOB_CREATE','Job created: '+name);}
+  sv('cn_jobs',jobs);closeM('mAdminJob');adminSection('jobs');toast('Beruf gespeichert.','success');
+}
+
+function openDocTypesManager(){
+  if(!CUR.isMaster&&!ok('doc_type_manage')){toast('Keine Berechtigung!','error');return;}
+  var types=getDocTypes();
+  var body=document.getElementById('mDocTypesBody');
+  body.innerHTML='<div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">'+
+    '<div style="font-size:.72rem;color:var(--muted)">Define document types and edit templates.</div>'+
+    '<button class="btn btn-primary btn-sm" onclick="openDocTypeEdit(null)">+ New Type</button></div>'+
+    '<div class="card-list">'+types.map(function(t,i){
+      return'<div class="card" style="cursor:default">'+
+        '<div class="card-left"><div class="card-title">'+ec(t.name)+'</div>'+
+        '<div style="font-size:.6rem;color:var(--muted);margin-top:2px">'+(t.template?'Vorlage vorhanden':'Keine Vorlage')+
+        (t.visLevel?' &nbsp;|&nbsp; Sehen: Stufe '+t.visLevel+'+':' &nbsp;|&nbsp; Sehen: Alle')+
+        (t.editLevel?' &nbsp;|&nbsp; Bearbeiten: Stufe '+t.editLevel+'+':' &nbsp;|&nbsp; Bearbeiten: Alle')+
+        '</div></div>'+
+        '<div class="card-right">'+
+        '<button class="btn btn-ghost btn-sm" onclick="openDocTypeEdit(\''+ec(t.name)+'\')">Bearbeiten</button>'+
+        (i>=5?'<button class="btn btn-danger btn-sm" onclick="deleteDocType(\''+ec(t.name)+'\')">X</button>':'')+
+        '</div></div>';
+    }).join('')+'</div>';
+  openM('mDocTypes');
+}
+function openDocTypeEdit(name){
+  var types=getDocTypes();
+  var t=name?types.find(function(x){return x.name===name;}):null;
+  document.getElementById('mDTETitle').textContent=name?'Typ bearbeiten: '+name:'Create New Type';
+  document.getElementById('dteEditName').value=name||'';
+  document.getElementById('dteName').value=t?t.name:'';
+  document.getElementById('dteHeader').value=t?t.headerText||'':'';
+  document.getElementById('dteTemplate').value=t?t.template||'':'';
+  document.getElementById('dteVisLevel').value=t&&t.visLevel!=null?String(t.visLevel):'0';
+  document.getElementById('dteEditLevel').value=t&&t.editLevel!=null?String(t.editLevel):'0';
+  openM('mDocTypeEdit');
+}
+function saveDocType(){
+  var newName=document.getElementById('dteName').value.trim();
+  var hdr=document.getElementById('dteHeader').value;
+  var tpl=document.getElementById('dteTemplate').value;
+  var visLevel=parseInt(document.getElementById('dteVisLevel').value)||0;
+  var editLevel=parseInt(document.getElementById('dteEditLevel').value)||0;
+  var editName=document.getElementById('dteEditName').value;
+  if(!newName){toast('Name ist erforderlich!','error');return;}
+  var types=getDocTypes();
+  if(editName){
+    var i=types.findIndex(function(x){return x.name===editName;});
+    if(i>=0){types[i].name=newName;types[i].headerText=hdr;types[i].template=tpl;types[i].visLevel=visLevel;types[i].editLevel=editLevel;}
+  }else{
+    if(types.find(function(x){return x.name===newName;})){toast('Type already exists!','error');return;}
+    types.push({name:newName,headerText:hdr,template:tpl,visLevel:visLevel,editLevel:editLevel});
+  }
+  localStorage.setItem('cn_doc_types',JSON.stringify(types));
+  closeM('mDocTypeEdit');
+  openDocTypesManager();
+  toast('Typ gespeichert.','success');
+}
+function deleteDocType(name){
+  askConfirm('Really delete type "'+name+'"?',function(){
+    var types=getDocTypes().filter(function(x){return x.name!==name;});
+    localStorage.setItem('cn_doc_types',JSON.stringify(types));
+    openDocTypesManager();
+    toast('Typ gelöscht.','error');
+  });
+}
+function canAccessProfile(citizenId){
+  if(CUR.isMaster)return true;
+  if(!citizenId)return true;
+  var c=ld('cn_citizens').find(function(x){return String(x.id)===String(citizenId);});
+  if(!c)return true;
+  var r=gR(c.jobId,c.rankId);
+  var rules=r&&r.profileAccessRules;
+  if(!rules||rules.length===0)return true;
+  return rules.some(function(rule){
+    if(!rule.jobId)return true;
+    var myJobs=[
+      {job:CUR.mainJob,rank:gR(CUR.mainJob,CUR.mainRang)},
+      {job:CUR.secondJob,rank:CUR.secondJob?gR(CUR.secondJob,CUR.secondRang):null}
+    ];
+    return myJobs.some(function(mj){
+      if(mj.job!==rule.jobId)return false;
+      return(mj.rank?(mj.rank.level||0):0)>=(rule.minLevel||0);
+    });
+  });
+}
+
+function applyTabVisibility(){
+  if(!CUR)return;
+  sh('tabLivemap',CUR.isMaster||ok('map_view'));
+  if(!CUR.isMaster){
+    // Master-Only Karten ausblenden
+    document.querySelectorAll('.admin-card.master-only').forEach(function(el){el.style.display='none';});
+    // Dok-Typen Karte: nur anzeigen wenn doc_type_manage
+    var dtCard=document.querySelector('.admin-card.doc-type-card');
+    if(dtCard)dtCard.style.display=ok('doc_type_manage')?'':'none';
+    // Titel anpassen
+    var t=document.getElementById('adminTitle');
+    if(t){
+      if((ok('job_manage')||ok('job_create'))&&ok('doc_type_manage'))t.textContent='Verwaltung';
+      else if(ok('job_manage')||ok('job_create'))t.textContent='Berufe verwalten';
+      else if(ok('doc_type_manage'))t.textContent='Dokumente verwalten';
+    }
+  }
+}
+
+function exportAllData(){
+  var data={
+    exportDate:new Date().toISOString(),
+    citizens:ld('cn_citizens'),
+    documents:ld('cn_documents'),
+    cars:ld('cn_cars'),
+    jobs:ld('cn_jobs'),
+    lexikon:ld('cn_lexikon'),
+    docTypes:getDocTypes()
+  };
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='civilnet_export_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  toast('Export gestartet.','success');
+  audit('DATA_EXPORT','Full export created');
+}
+</script>
+</body>
+</html>

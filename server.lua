@@ -1,0 +1,638 @@
+--server.Lua
+local function makeToken()
+    local t = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    local len = #t
+    local function rc()
+        local i = math.random(1, len)
+        return string.sub(t, i, i)
+    end
+    return rc()..rc()..rc()..rc()..'-'..rc()..rc()..rc()..rc()..'-'..rc()..rc()..rc()..rc()
+end
+
+
+local function getID(src)
+    
+    for i = 0, GetNumPlayerIdentifiers(src) - 1 do
+        local id = GetPlayerIdentifier(src, i)
+        if id and string.sub(id, 1, 6) == 'steam:' then
+            return id
+        end
+    end
+    
+    for i = 0, GetNumPlayerIdentifiers(src) - 1 do
+        local id = GetPlayerIdentifier(src, i)
+        if id and string.sub(id, 1, 8) == 'license:' then
+            return id
+        end
+    end
+ 
+    local fb = GetPlayerIdentifier(src, 0)
+    if fb then return fb end
+    return 'unknown_'..tostring(src)
+end
+
+
+local function getName(src)
+    -- ESX
+    local ok, esx = pcall(function()
+        return exports['es_extended']:getSharedObject()
+    end)
+    if ok and esx then
+        local xp = esx.GetPlayerFromId(src)
+        if xp then
+            local n = xp.getName()
+            if n and n ~= '' then return n end
+        end
+    end
+    -- QBCore
+    local ok2, qb = pcall(function()
+        return exports['qb-core']:GetCoreObject()
+    end)
+    if ok2 and qb then
+        local p = qb.Functions.GetPlayer(src)
+        if p and p.PlayerData and p.PlayerData.charinfo then
+            local c = p.PlayerData.charinfo
+            local n = (c.firstname or '')..' '..(c.lastname or '')
+            if #n > 1 then return n end
+        end
+    end
+    -- FiveM Name
+    local fn = GetPlayerName(src)
+    if fn and fn ~= '' then return fn end
+    return 'Spieler_'..tostring(src)
+end
+
+
+local function chat(src, msg)
+    TriggerClientEvent('chat:addMessage', src, {
+        color = {200, 169, 110},
+        multiline = true,
+        args = {'[COAST.NET]', msg}
+    })
+end
+
+
+
+AddEventHandler('onResourceStart', function(res)
+    if res ~= GetCurrentResourceName() then return end
+    Citizen.Wait(2000)
+
+    -- Tabelle: coastnet_citizens
+    MySQL.Async.execute([[
+        CREATE TABLE IF NOT EXISTS `coastnet_citizens` (
+            `id`            INT AUTO_INCREMENT PRIMARY KEY,
+            `name`          VARCHAR(100) NOT NULL DEFAULT '',
+            `birth`         VARCHAR(20) DEFAULT '',
+            `height`        VARCHAR(20) DEFAULT '',
+            `phone`         VARCHAR(20) DEFAULT '',
+            `sex`           VARCHAR(1) DEFAULT 'M',
+            `identifier`    VARCHAR(100) DEFAULT NULL,
+            `job`           VARCHAR(100) DEFAULT 'job_arbeitslos',
+            `job_rank`      VARCHAR(100) DEFAULT 'rank_al_1',
+            `second_job`    VARCHAR(100) DEFAULT NULL,
+            `second_rank`   VARCHAR(100) DEFAULT NULL,
+            `wanted`        TINYINT(1) DEFAULT 0,
+            `wanted_reason` TEXT,
+            `wanted_by`     VARCHAR(100) DEFAULT NULL,
+            `wanted_date`   TIMESTAMP NULL,
+            `created_at`    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at`    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]], {}, function() end)
+
+    -- Tabelle: coastnet_tokens
+    MySQL.Async.execute([[
+        CREATE TABLE IF NOT EXISTS `coastnet_tokens` (
+            `id`               INT AUTO_INCREMENT PRIMARY KEY,
+            `token`            VARCHAR(20) UNIQUE NOT NULL,
+            `identifier`       VARCHAR(100) NOT NULL,
+            `player_name`      VARCHAR(100) DEFAULT '',
+            `citizen_id`       INT DEFAULT NULL,
+            `used`             TINYINT(1) DEFAULT 0,
+            `used_by_username` VARCHAR(100) DEFAULT NULL,
+            `created_at`       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `used_at`          TIMESTAMP NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]], {}, function() end)
+
+    -- Tabelle: coastnet_vehicles
+    MySQL.Async.execute([[
+        CREATE TABLE IF NOT EXISTS `coastnet_vehicles` (
+            `id`         INT AUTO_INCREMENT PRIMARY KEY,
+            `plate`      VARCHAR(20) UNIQUE NOT NULL,
+            `model`      VARCHAR(50) DEFAULT '',
+            `owner`      VARCHAR(100) DEFAULT '',
+            `color`      VARCHAR(50) DEFAULT '',
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]], {}, function() end)
+
+    print('^2[COASTNET] Datenbank-Tabellen erstellt / verifiziert.^7')
+end)
+
+
+
+local function getOrMakeToken(src, callback)
+    local identifier = getID(src)
+    local playerName = getName(src)
+
+  
+    MySQL.Async.fetchScalar(
+        'SELECT `token` FROM `coastnet_tokens` WHERE `identifier` = @id AND `used` = 0 LIMIT 1',
+        {['@id'] = identifier},
+        function(existToken)
+            if existToken then
+                callback('existing', existToken, playerName, nil)
+                return
+            end
+
+       
+            MySQL.Async.fetchScalar(
+                'SELECT `used_by_username` FROM `coastnet_tokens` WHERE `identifier` = @id AND `used` = 1 LIMIT 1',
+                {['@id'] = identifier},
+                function(usedBy)
+                    if usedBy then
+                        callback('registered', nil, playerName, usedBy)
+                        return
+                    end
+
+         
+                    local newToken = makeToken()
+
+                    MySQL.Async.insert(
+                        'INSERT INTO `coastnet_citizens` (`name`, `identifier`, `job`, `job_rank`) VALUES (@n, @id, @j, @jr)',
+                        {['@n'] = playerName, ['@id'] = identifier, ['@j'] = 'job_arbeitslos', ['@jr'] = 'rank_al_1'},
+                        function(citizenId)
+                            local cid = tonumber(citizenId) or 0
+
+                            if cid == 0 then
+                       
+                                MySQL.Async.fetchScalar(
+                                    'SELECT `id` FROM `coastnet_citizens` WHERE `identifier` = @id ORDER BY `id` DESC LIMIT 1',
+                                    {['@id'] = identifier},
+                                    function(fetchedId)
+                                        cid = tonumber(fetchedId) or 0
+                                        MySQL.Async.execute(
+                                            'INSERT IGNORE INTO `coastnet_tokens` (`token`, `identifier`, `player_name`, `citizen_id`) VALUES (@tok, @id, @n, @cid)',
+                                            {['@tok'] = newToken, ['@id'] = identifier, ['@n'] = playerName, ['@cid'] = cid},
+                                            function()
+                                                print('^2[COASTNET] Neuer Spieler (FB): '..playerName..' | Token: '..newToken..' | CID: '..tostring(cid)..'^7')
+                                                callback('new', newToken, playerName, nil)
+                                            end
+                                        )
+                                    end
+                                )
+                            else
+                                MySQL.Async.execute(
+                                    'INSERT IGNORE INTO `coastnet_tokens` (`token`, `identifier`, `player_name`, `citizen_id`) VALUES (@tok, @id, @n, @cid)',
+                                    {['@tok'] = newToken, ['@id'] = identifier, ['@n'] = playerName, ['@cid'] = cid},
+                                    function()
+                                        print('^2[COASTNET] Neuer Spieler: '..playerName..' | Token: '..newToken..' | CID: '..tostring(cid)..'^7')
+                                        callback('new', newToken, playerName, nil)
+                                    end
+                                )
+                            end
+                        end
+                    )
+                end
+            )
+        end
+    )
+end
+
+
+
+AddEventHandler('playerSpawned', function()
+    local src = source
+    Citizen.SetTimeout(2500, function()
+
+        if not GetPlayerName(src) then return end
+
+        getOrMakeToken(src, function(status, token, pname, usedBy)
+            if status == 'registered' then
+                chat(src, 'Willkommen zurueck, '..pname..'! Druecke F5 um das Terminal zu oeffnen.')
+            else
+                TriggerClientEvent('coastnet:client:receiveToken', src, token, pname)
+            end
+        end)
+    end)
+end)
+
+
+
+RegisterCommand('token', function(src, args, raw)
+    if src == 0 then
+        print('[COASTNET] /token: nur fuer Spieler verfuegbar.')
+        return
+    end
+    getOrMakeToken(src, function(status, token, pname, usedBy)
+        if status == 'registered' then
+            chat(src, 'Du hast bereits einen Account: ~y~'..tostring(usedBy)..'~s~. Kein offener Token.')
+        else
+            TriggerClientEvent('coastnet:client:receiveToken', src, token, pname)
+        end
+    end)
+end, false)
+
+
+
+RegisterNetEvent('coastnet:server:requestToken')
+AddEventHandler('coastnet:server:requestToken', function()
+    local src = source
+    getOrMakeToken(src, function(status, token, pname, usedBy)
+        if status == 'registered' then
+            chat(src, 'Du hast bereits einen Account: ~y~'..tostring(usedBy)..'~s~.')
+        else
+            TriggerClientEvent('coastnet:client:receiveToken', src, token, pname)
+        end
+    end)
+end)
+
+
+
+RegisterNetEvent('coastnet:server:validateToken')
+AddEventHandler('coastnet:server:validateToken', function(token, username)
+    local src = source
+    if not token or token == '' or not username or username == '' then
+        TriggerClientEvent('coastnet:client:tokenResult', src, false, 'Ungueltige Eingabe.')
+        return
+    end
+
+  
+    local cleanToken = string.upper(tostring(token)):gsub('[^A-Z0-9%-]', '')
+    local cleanUser  = tostring(username)
+
+    MySQL.Async.fetchAll(
+        [[SELECT t.`token`, t.`citizen_id`, t.`identifier`,
+                 c.`id` AS cid, c.`name` AS cname, c.`sex`, c.`birth`,
+                 c.`height`, c.`phone`, c.`job`, c.`job_rank`,
+                 c.`second_job`, c.`second_rank`
+          FROM `coastnet_tokens` t
+          LEFT JOIN `coastnet_citizens` c ON t.`citizen_id` = c.`id`
+          WHERE t.`token` = @tok AND t.`used` = 0
+          LIMIT 1]],
+        {['@tok'] = cleanToken},
+        function(rows)
+            if not rows or #rows == 0 then
+                TriggerClientEvent('coastnet:client:tokenResult', src, false, 'Token ungueltig oder bereits genutzt!')
+                return
+            end
+
+            local row        = rows[1]
+            local citizenId  = row.citizen_id or row.cid
+            local identifier = row.identifier
+
+           
+            MySQL.Async.execute(
+                'UPDATE `coastnet_citizens` SET `name` = @n WHERE `id` = @id',
+                {['@n'] = cleanUser, ['@id'] = citizenId},
+                function() end
+            )
+
+            
+            MySQL.Async.execute(
+                'UPDATE `coastnet_tokens` SET `used` = 1, `used_by_username` = @u, `used_at` = NOW() WHERE `token` = @tok',
+                {['@u'] = cleanUser, ['@tok'] = cleanToken},
+                function()
+                    print('^2[COASTNET] Registriert: '..cleanUser..' | Citizen: '..tostring(citizenId)..' | Token: '..cleanToken..'^7')
+
+                  
+                    MySQL.Async.fetchAll(
+                        'SELECT * FROM `coastnet_citizens` WHERE `id` = @id LIMIT 1',
+                        {['@id'] = citizenId},
+                        function(crows)
+                            local cdata
+                            if crows and #crows > 0 then
+                                cdata = crows[1]
+                                cdata.name = cleanUser 
+                            else
+                                cdata = {
+                                    id          = citizenId,
+                                    name        = cleanUser,
+                                    birth       = '', height = '', phone = '',
+                                    sex         = 'M',
+                                    job         = 'job_arbeitslos',
+                                    job_rank    = 'rank_al_1',
+                                    second_job  = nil,
+                                    second_rank = nil,
+                                    identifier  = identifier
+                                }
+                            end
+                            TriggerClientEvent('coastnet:client:tokenResult', src, true, cdata, identifier, cleanUser)
+                          
+                            local allPlayers = GetPlayers()
+                            for _, pid in ipairs(allPlayers) do
+                                local pidNum = tonumber(pid)
+                                if pidNum and pidNum ~= src then
+                                    TriggerClientEvent('coastnet:client:refreshRequired', pidNum)
+                                end
+                            end
+                        end
+                    )
+                end
+            )
+        end
+    )
+end)
+
+
+
+RegisterNetEvent('coastnet:server:setCitizenJob')
+AddEventHandler('coastnet:server:setCitizenJob', function(citizenId, job, jobRank, secondJob, secondRank)
+    local src = source
+    MySQL.Async.execute(
+        'UPDATE `coastnet_citizens` SET `job`=@j, `job_rank`=@jr, `second_job`=@sj, `second_rank`=@sr WHERE `id`=@id',
+        {
+            ['@j']  = job       or 'job_arbeitslos',
+            ['@jr'] = jobRank   or 'rank_al_1',
+            ['@sj'] = secondJob  or nil,
+            ['@sr'] = secondRank or nil,
+            ['@id'] = citizenId
+        },
+        function()
+            print('^2[COASTNET] Job: Citizen '..tostring(citizenId)..' -> '..tostring(job)..'^7')
+            MySQL.Async.fetchAll(
+                [[SELECT c.*,
+                         t.`token`, t.`used`, t.`used_by_username`,
+                         u.`firstname`   AS u_firstname,
+                         u.`lastname`    AS u_lastname,
+                         u.`dateofbirth` AS u_dateofbirth,
+                         u.`sex`         AS u_sex,
+                         u.`height`      AS u_height
+                  FROM `coastnet_citizens` c
+                  LEFT JOIN `coastnet_tokens` t ON c.`identifier` = t.`identifier`
+                  LEFT JOIN `users` u ON (
+                  c.`identifier` = u.`identifier`
+                  OR REPLACE(c.`identifier`, 'license:', '') = u.`identifier`
+                  OR c.`identifier` = CONCAT('license:', u.`identifier`)
+              )
+                  ORDER BY c.`name` ASC]],
+                {},
+                function(rows)
+                    TriggerClientEvent('coastnet:client:receiveCitizens', src, rows or {})
+                end
+            )
+        end
+    )
+end)
+
+
+
+RegisterNetEvent('coastnet:server:loadCitizens')
+AddEventHandler('coastnet:server:loadCitizens', function()
+    local src = source
+
+    -- Alle coastnet_citizens laden und mit users-Daten anreichern
+    -- JOIN versucht alle Identifier-Formate (mit/ohne 'license:' Präfix)
+    MySQL.Async.fetchAll(
+        [[SELECT c.*,
+                 c.`id` AS nr,
+                 t.`token`, t.`used`, t.`used_by_username`,
+                 COALESCE(u1.`firstname`, u2.`firstname`) AS u_firstname,
+                 COALESCE(u1.`lastname`,  u2.`lastname`)  AS u_lastname,
+                 COALESCE(u1.`dateofbirth`, u2.`dateofbirth`) AS u_dateofbirth,
+                 COALESCE(u1.`sex`,    u2.`sex`)    AS u_sex,
+                 COALESCE(u1.`height`, u2.`height`) AS u_height
+          FROM `coastnet_citizens` c
+          LEFT JOIN `coastnet_tokens` t
+               ON c.`identifier` = t.`identifier`
+          LEFT JOIN `users` u1
+               ON c.`identifier` = u1.`identifier`
+          LEFT JOIN `users` u2
+               ON REPLACE(c.`identifier`, 'license:', '') = u2.`identifier`
+          ORDER BY c.`id` ASC]],
+        {},
+        function(rows)
+            -- Zusätzlich alle users laden die noch KEINEN citizen haben
+            MySQL.Async.fetchAll(
+                [[SELECT u.`identifier`, u.`firstname`, u.`lastname`,
+                         u.`dateofbirth`, u.`sex`, u.`height`
+                  FROM `users` u
+                  WHERE NOT EXISTS (
+                      SELECT 1 FROM `coastnet_citizens` c
+                      WHERE c.`identifier` = u.`identifier`
+                         OR c.`identifier` = CONCAT('license:', u.`identifier`)
+                         OR REPLACE(c.`identifier`,'license:','') = u.`identifier`
+                  )]],
+                {},
+                function(newUsers)
+                    local result = rows or {}
+
+                    -- Neue citizens für users ohne Eintrag anlegen
+                    if newUsers and #newUsers > 0 then
+                        for _, u in ipairs(newUsers) do
+                            local fname = (u.firstname or '')
+                            local lname = (u.lastname or '')
+                            local fullName = (fname .. ' ' .. lname):match('^%s*(.-)%s*$')
+                            if fullName == '' then fullName = u.identifier or 'Unbekannt' end
+                            MySQL.Async.execute(
+                                [[INSERT IGNORE INTO `coastnet_citizens`
+                                  (`name`, `identifier`, `job`, `job_rank`)
+                                  VALUES (@n, @id, 'job_arbeitslos', 'rank_al_1')]],
+                                {['@n'] = fullName, ['@id'] = u.identifier},
+                                function() end
+                            )
+                        end
+                    end
+
+                    TriggerClientEvent('coastnet:client:receiveCitizens', src, result)
+                end
+            )
+        end
+    )
+end)
+
+
+
+RegisterNetEvent('coastnet:server:saveCitizen')
+AddEventHandler('coastnet:server:saveCitizen', function(citizen)
+    if not citizen then return end
+    if citizen.id then
+        MySQL.Async.execute(
+            [[UPDATE `coastnet_citizens`
+              SET `name`=@n, `birth`=@b, `height`=@h, `phone`=@p, `sex`=@s,
+                  `job`=@j, `job_rank`=@jr, `second_job`=@sj, `second_rank`=@sr,
+                  `wanted`=@w, `wanted_reason`=@wr, `wanted_by`=@wb
+              WHERE `id`=@id]],
+            {
+                ['@n']  = citizen.name         or '',
+                ['@b']  = citizen.birth        or '',
+                ['@h']  = citizen.height       or '',
+                ['@p']  = citizen.phone        or '',
+                ['@s']  = citizen.sex          or 'M',
+                ['@j']  = citizen.job          or 'job_arbeitslos',
+                ['@jr'] = citizen.job_rank     or 'rank_al_1',
+                ['@sj'] = citizen.second_job   or nil,
+                ['@sr'] = citizen.second_rank  or nil,
+                ['@w']  = citizen.wanted and 1 or 0,
+                ['@wr'] = citizen.wanted_reason or nil,
+                ['@wb'] = citizen.wanted_by    or nil,
+                ['@id'] = citizen.id
+            },
+            function() end
+        )
+    else
+        MySQL.Async.execute(
+            [[INSERT INTO `coastnet_citizens`
+              (`name`,`birth`,`height`,`phone`,`sex`,`job`,`job_rank`,`wanted`,`wanted_reason`)
+              VALUES (@n,@b,@h,@p,@s,@j,@jr,@w,@wr)]],
+            {
+                ['@n']  = citizen.name         or '',
+                ['@b']  = citizen.birth        or '',
+                ['@h']  = citizen.height       or '',
+                ['@p']  = citizen.phone        or '',
+                ['@s']  = citizen.sex          or 'M',
+                ['@j']  = citizen.job          or 'job_arbeitslos',
+                ['@jr'] = citizen.job_rank     or 'rank_al_1',
+                ['@w']  = citizen.wanted and 1 or 0,
+                ['@wr'] = citizen.wanted_reason or nil
+            },
+            function() end
+        )
+    end
+end)
+
+
+
+RegisterNetEvent('coastnet:server:loadTokens')
+AddEventHandler('coastnet:server:loadTokens', function()
+    local src = source
+    MySQL.Async.fetchAll(
+        [[SELECT t.`id`, t.`token`, t.`player_name`, t.`used`,
+                 t.`used_by_username`, t.`created_at`, t.`used_at`,
+                 c.`id` AS citizen_id, c.`name` AS citizen_name,
+                 c.`job`, c.`job_rank`
+          FROM `coastnet_tokens` t
+          LEFT JOIN `coastnet_citizens` c ON t.`citizen_id` = c.`id`
+          ORDER BY t.`created_at` DESC]],
+        {},
+        function(rows)
+            TriggerClientEvent('coastnet:client:receiveTokens', src, rows or {})
+        end
+    )
+end)
+
+
+
+RegisterNetEvent('coastnet:server:loadVehicles')
+AddEventHandler('coastnet:server:loadVehicles', function()
+    local src = source
+    MySQL.Async.fetchAll(
+        'SELECT * FROM `coastnet_vehicles` ORDER BY `plate` ASC',
+        {},
+        function(rows)
+            TriggerClientEvent('coastnet:client:receiveVehicles', src, rows or {})
+        end
+    )
+end)
+
+
+
+RegisterNetEvent('coastnet:server:saveVehicle')
+AddEventHandler('coastnet:server:saveVehicle', function(vehicle)
+    if not vehicle or not vehicle.plate or vehicle.plate == '' then return end
+    MySQL.Async.execute(
+        [[INSERT INTO `coastnet_vehicles` (`plate`,`model`,`owner`,`color`)
+          VALUES (@pl,@mo,@ow,@co)
+          ON DUPLICATE KEY UPDATE `model`=VALUES(`model`), `owner`=VALUES(`owner`), `color`=VALUES(`color`)]],
+        {
+            ['@pl'] = vehicle.plate or '',
+            ['@mo'] = vehicle.model or '',
+            ['@ow'] = vehicle.owner or '',
+            ['@co'] = vehicle.color or ''
+        },
+        function() end
+    )
+end)
+
+
+
+RegisterNetEvent('coastnet:server:getPlayerIdentifier')
+AddEventHandler('coastnet:server:getPlayerIdentifier', function()
+    local src = source
+    TriggerClientEvent('coastnet:client:receiveIdentifier', src, getID(src))
+end)
+
+
+local playerPositions = {}  
+
+
+RegisterNetEvent('coastnet:server:updatePosition')
+AddEventHandler('coastnet:server:updatePosition', function(data)
+    local src = source
+    if not data then return end
+
+    local identifier = getID(src)
+
+   
+    MySQL.Async.fetchAll(
+        [[SELECT c.job, c.job_rank, c.second_job, c.second_rank, c.name, c.id
+          FROM coastnet_citizens c
+          WHERE c.identifier = @id LIMIT 1]],
+        {['@id'] = identifier},
+        function(rows)
+            local row = rows and rows[1] or {}
+            playerPositions[tostring(src)] = {
+                serverId  = tostring(src),
+                name      = row.name or data.name or GetPlayerName(src) or 'Unknown',
+                job       = row.job or 'job_arbeitslos',
+                rank      = row.job_rank or 'rank_al_1',
+                x         = data.x or 0,
+                y         = data.y or 0,
+                z         = data.z or 0,
+                heading   = data.heading or 0,
+                citizenId = row.id or nil
+            }
+        end
+    )
+end)
+
+
+RegisterNetEvent('coastnet:server:requestPositions')
+AddEventHandler('coastnet:server:requestPositions', function()
+    local src = source
+    local list = {}
+    local mySrcStr = tostring(src)
+    for id, data in pairs(playerPositions) do
+        
+        local entry = {}
+        for k,v in pairs(data) do entry[k]=v end
+        entry.isSelf = (id == mySrcStr)
+        table.insert(list, entry)
+    end
+    TriggerClientEvent('coastnet:client:receivePositions', src, list)
+end)
+
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(3000)
+       
+        local list = {}
+        for id, data in pairs(playerPositions) do
+            table.insert(list, data)
+        end
+       
+        for _, playerId in ipairs(GetPlayers()) do
+            local src = tonumber(playerId)
+            if src then
+                local enriched = {}
+                for _, entry in ipairs(list) do
+                    local e = {}
+                    for k,v in pairs(entry) do e[k]=v end
+                    e.isSelf = (tostring(src) == e.serverId)
+                    table.insert(enriched, e)
+                end
+                TriggerClientEvent('coastnet:client:receivePositions', src, enriched)
+            end
+        end
+    end
+end)
+
+
+AddEventHandler('playerDropped', function(reason)
+    local src = source
+    playerPositions[tostring(src)] = nil
+    
+    TriggerClientEvent('coastnet:client:playerLeft', -1, tostring(src))
+end)

@@ -1,0 +1,163 @@
+<!-- Token_display.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;background:transparent;overflow:hidden;font-family:'Courier New',monospace;}
+
+#overlay{
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.75);
+  z-index:99999;
+  align-items:center;
+  justify-content:center;
+}
+#overlay.show{display:flex;}
+
+#box{
+  background:#0e0c0a;
+  border:2px solid #c8a96e;
+  border-top:3px solid #be0606;
+  width:420px;
+  padding:32px 36px 28px;
+  text-align:center;
+  box-shadow:0 24px 64px rgba(0,0,0,0.9);
+}
+
+.logo{font-size:1.5rem;color:#be0606;letter-spacing:.15em;margin-bottom:4px;}
+.sub{font-size:.6rem;color:#6e6050;letter-spacing:.2em;text-transform:uppercase;margin-bottom:28px;}
+.label{font-size:.58rem;color:#6e6050;letter-spacing:.18em;text-transform:uppercase;margin-bottom:10px;}
+
+#tokenCode{
+  font-size:1.6rem;
+  color:#c8a96e;
+  letter-spacing:.25em;
+  background:rgba(200,169,110,0.07);
+  border:1px solid rgba(200,169,110,0.25);
+  padding:16px 20px;
+  margin-bottom:8px;
+}
+
+#copyBtn{
+  width:100%;
+  padding:12px;
+  background:transparent;
+  border:1.5px solid #c8a96e;
+  color:#c8a96e;
+  font-family:'Courier New',monospace;
+  font-size:.75rem;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  cursor:pointer;
+  margin-bottom:10px;
+  transition:background .18s,color .18s;
+}
+#copyBtn:hover{background:#c8a96e;color:#0e0c0a;}
+#copyBtn.copied{background:#4caf50;border-color:#4caf50;color:#fff;}
+
+#closeBtn{
+  width:100%;
+  padding:10px;
+  background:transparent;
+  border:1.5px solid #2e2820;
+  color:#6e6050;
+  font-family:'Courier New',monospace;
+  font-size:.68rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:border-color .18s,color .18s;
+}
+#closeBtn:hover{border-color:#be0606;color:#be0606;}
+
+.hint{font-size:.6rem;color:#4e4038;margin-top:14px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div id="box">
+    <div class="logo">COAST.NET</div>
+    <div class="sub">Registrierungs-Token</div>
+    <div class="label">Dein persönlicher Token</div>
+    <div id="tokenCode">----·----·----</div>
+    <button id="copyBtn" onclick="copyToken()">Token kopieren</button>
+    <button id="closeBtn" onclick="closeDisplay()">Schließen &nbsp;[ESC]</button>
+    <div class="hint">
+      Öffne das COAST.NET Tablet mit <strong style="color:#c8a96e">F5</strong><br/>
+      → Registrieren → Token eingeben → Account erstellen
+    </div>
+  </div>
+</div>
+
+<script>
+var currentToken = '';
+
+
+var resourceName = (function(){
+  try{
+    var m=window.location.href.match(/cfx-nui-([^\/]+)/);
+    if(m) return m[1];
+  }catch(e){}
+  return 'coastnet';
+})();
+
+window.addEventListener('message', function(ev){
+  if(!ev.data || !ev.data.action) return;
+  if(ev.data.action === 'showToken'){
+    currentToken = ev.data.token || '';
+    document.getElementById('tokenCode').textContent = currentToken;
+    document.getElementById('overlay').classList.add('show');
+    document.getElementById('copyBtn').textContent = 'Token kopieren';
+    document.getElementById('copyBtn').className = '';
+    document.getElementById('copyBtn').id = 'copyBtn';
+  }
+  if(ev.data.action === 'close'){
+    document.getElementById('overlay').classList.remove('show');
+  }
+});
+
+function copyToken(){
+  try{
+    navigator.clipboard.writeText(currentToken).then(function(){
+      var btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ Kopiert!';
+      btn.classList.add('copied');
+      setTimeout(function(){ btn.textContent='Token kopieren'; btn.classList.remove('copied'); }, 2000);
+    });
+  }catch(e){
+    
+    var ta = document.createElement('textarea');
+    ta.value = currentToken;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    var btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Kopiert!';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Token kopieren'; btn.classList.remove('copied'); }, 2000);
+  }
+}
+
+function closeDisplay(){
+  document.getElementById('overlay').classList.remove('show');
+  
+  fetch('https://'+resourceName+'/closeTokenDisplay',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({})
+  }).catch(function(){});
+}
+
+document.addEventListener('keydown', function(ev){
+  if(ev.key === 'Escape'){
+    closeDisplay();
+  }
+});
+</script>
+</body>
+</html>

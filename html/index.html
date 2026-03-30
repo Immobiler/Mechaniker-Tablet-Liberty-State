@@ -1,0 +1,254 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>COAST.NET</title>
+<link rel="stylesheet" href="tablet.css"/>
+<style>
+
+#td-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0,0,0,.85);
+  align-items: center;
+  justify-content: center;
+}
+#td-overlay.show { display: flex; }
+
+#td-box {
+  background: #0e0c0a;
+  border: 1px solid #3d3428;
+  border-top: 3px solid #be0606;
+  width: 420px;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(0,0,0,.95);
+}
+
+#td-head {
+  background: #0a0906;
+  border-bottom: 1px solid #2e2820;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#td-logo { font-family: 'Special Elite', Georgia, serif; font-size: 1rem; color: #be0606; letter-spacing: .14em; }
+#td-sub  { font-size: .55rem; color: #4e4038; letter-spacing: .18em; text-transform: uppercase; margin-top: 2px; }
+#td-xbtn {
+  background: none; border: 1.5px solid #2e2820; color: #4e4038;
+  width: 28px; height: 28px; cursor: pointer; font-size: .85rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s; font-family: monospace;
+}
+#td-xbtn:hover { border-color: #be0606; color: #be0606; }
+
+#td-body { padding: 28px 24px 22px; text-align: center; }
+
+#td-lbl {
+  font-size: .55rem; color: #6e6050;
+  letter-spacing: .2em; text-transform: uppercase; margin-bottom: 14px;
+}
+#td-code {
+  font-family: 'Courier New', monospace; font-size: 1.65rem;
+  color: #c8a96e; letter-spacing: .22em;
+  background: rgba(200,169,110,.06); border: 1px solid rgba(200,169,110,.2);
+  padding: 18px 16px; margin-bottom: 18px;
+  user-select: all; cursor: default;
+}
+
+#td-copy {
+  width: 100%; padding: 13px 0; margin-bottom: 9px;
+  background: transparent; border: 1.5px solid #c8a96e; color: #c8a96e;
+  font-family: 'Courier New', monospace; font-size: .72rem;
+  letter-spacing: .14em; text-transform: uppercase; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+#td-copy:hover { background: #c8a96e; color: #0e0c0a; }
+#td-copy.ok    { background: #2e7d32; border-color: #4caf50; color: #a5d6a7; }
+
+#td-close {
+  width: 100%; padding: 10px 0;
+  background: transparent; border: 1.5px solid #2e2820; color: #4e4038;
+  font-family: 'Courier New', monospace; font-size: .65rem;
+  letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+#td-close:hover { border-color: #be0606; color: #be0606; }
+
+#td-hint {
+  margin-top: 18px; padding: 12px 14px;
+  background: rgba(200,169,110,.04); border: 1px solid #2e2820;
+  font-size: .6rem; color: #4e4038; line-height: 1.75; letter-spacing: .04em;
+}
+#td-hint strong { color: #c8a96e; }
+</style>
+</head>
+<body>
+
+
+<div id="tablet-wrapper" class="hidden">
+  <div id="tablet-chrome">
+    <div id="tablet-topbar">
+      <div id="tablet-topbar-left">
+        <div id="tablet-status">Authority Terminal</div>
+      </div>
+      <div id="tablet-topbar-right">
+        <button class="tablet-btn" id="btn-fullscreen" onclick="toggleFullscreen()">&#x25B3;</button>
+        <button class="tablet-btn" id="btn-close"      onclick="closeTablet()">&#x2715;</button>
+      </div>
+    </div>
+    <iframe id="tablet-frame" src="login.html"></iframe>
+  </div>
+  <div id="tablet-bottom-bar"></div>
+</div>
+
+
+<div id="td-overlay">
+  <div id="td-box">
+    <div id="td-head">
+      <div>
+        <div id="td-logo">COAST.NET</div>
+        <div id="td-sub">Registration Token</div>
+      </div>
+      <button id="td-xbtn" onclick="tdHide()">&#x2715;</button>
+    </div>
+    <div id="td-body">
+      <div id="td-lbl">Your personal Registration Token</div>
+      <div id="td-code">----&middot;----&middot;----</div>
+      <button id="td-copy"  onclick="tdCopy()">&#x2398; Copy Token</button>
+      <button id="td-close" onclick="tdHide()">Close &nbsp;&middot;&nbsp; ESC</button>
+      <div id="td-hint">
+        Press <strong>F5</strong> to open the COAST.NET Tablet<br/>
+        Click <strong>Register</strong> and enter this token
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var isOpen       = false;
+var isFullscreen = false;
+var tdToken      = '';
+
+var wrapper   = document.getElementById('tablet-wrapper');
+var mFrame    = document.getElementById('tablet-frame');
+var tdOverlay = document.getElementById('td-overlay');
+var tdCode    = document.getElementById('td-code');
+var tdCopyBtn = document.getElementById('td-copy');
+
+
+var RES = (function(){
+    try {
+        var m = window.location.href.match(/cfx-nui-([^\/]+)/);
+        if (m) return m[1];
+    } catch(e) {}
+    return 'coastnet';
+})();
+
+
+window.addEventListener('message', function(ev) {
+    if (!ev.data || !ev.data.action) return;
+    var a = ev.data.action;
+
+    if (a === 'open')             { tabletOpen();              return; }
+    if (a === 'close')            { tabletClose();             return; }
+    if (a === 'showTokenDisplay') { tdShow(ev.data.token);     return; }
+    if (a === 'hideTokenDisplay') { tdHide(true);              return; }
+    if (a === 'switchPage')       { mFrame.src = ev.data.page; return; }
+
+
+    if (a === 'receiveToken') {
+        try { mFrame.contentWindow.postMessage(ev.data, '*'); } catch(e) {}
+        return;
+    }
+
+    
+    try { mFrame.contentWindow.postMessage(ev.data, '*'); } catch(e) {}
+});
+
+
+function tdShow(token) {
+    tdToken = token || '';
+    tdCode.textContent = tdToken;
+    tdCopyBtn.className = '';
+    tdCopyBtn.innerHTML = '&#x2398; Copy Token';
+    tdOverlay.classList.add('show');
+}
+
+function tdHide(skipFetch) {
+    tdOverlay.classList.remove('show');
+    if (skipFetch) return;
+
+    fetch('https://' + RES + '/closeTokenDisplay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    }).catch(function(){});
+}
+
+function tdCopy() {
+    if (!tdToken) return;
+    function onCopied() {
+        tdCopyBtn.className = 'ok';
+        tdCopyBtn.innerHTML = '&#x2713; Copied!';
+        setTimeout(function(){
+            tdCopyBtn.className = '';
+            tdCopyBtn.innerHTML = '&#x2398; Copy Token';
+        }, 2500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(tdToken).then(onCopied).catch(function(){
+            execCopy(); onCopied();
+        });
+    } else { execCopy(); onCopied(); }
+}
+function execCopy() {
+    var t = document.createElement('textarea');
+    t.value = tdToken; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select(); document.execCommand('copy');
+    document.body.removeChild(t);
+}
+
+
+document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape' && tdOverlay.classList.contains('show')) { tdHide(); return; }
+    if (ev.key === 'F5') ev.preventDefault();
+});
+
+
+function tabletOpen() {
+    isOpen = true;
+    wrapper.classList.remove('hidden');
+}
+
+function closeTablet() {
+    fetch('https://' + RES + '/close', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+    }).catch(function(){});
+    tabletClose();
+}
+
+function tabletClose() {
+    isOpen = false; isFullscreen = false;
+    wrapper.classList.add('hidden');
+    wrapper.classList.remove('fullscreen');
+    document.getElementById('btn-fullscreen').innerHTML = '&#x25B3;';
+
+}
+
+function toggleFullscreen() {
+    isFullscreen = !isFullscreen;
+    wrapper.classList.toggle('fullscreen', isFullscreen);
+    document.getElementById('btn-fullscreen').innerHTML = isFullscreen ? '&#x25BD;' : '&#x25B3;';
+    fetch('https://' + RES + '/setFullscreen', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullscreen: isFullscreen })
+    }).catch(function(){});
+}
+</script>
+</body>
+</html>

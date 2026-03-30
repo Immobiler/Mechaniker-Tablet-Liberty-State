@@ -1,0 +1,557 @@
+<!-- login.html-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>COAST.NET – Login</title>
+  <link rel="stylesheet" href="PDDoc.css"/>
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-logo">COAST.NET</div>
+    <div class="login-sub">Authority Management System</div>
+
+  
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabLogin"    onclick="switchTab('login')">Login</button>
+      <button class="login-tab"        id="tabToken"    onclick="switchTab('token')">Registrieren</button>
+    </div>
+
+    
+    <div id="formLogin">
+      <div class="form-group">
+        <label class="form-label">IC Name</label>
+        <input class="form-input" id="loginUser" type="text" placeholder="John Doe" autocomplete="username"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <div id="loginError" style="color:var(--danger);font-size:.75rem;margin-bottom:10px;display:none;"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">Login</button>
+    </div>
+
+   
+    <div id="formToken" style="display:none;">
+
+      
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:18px;">
+        <div class="step active" id="step1">1</div>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+        <div class="step" id="step2">2</div>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+        <div class="step" id="step3">3</div>
+      </div>
+
+     
+      <div id="tokenStep1">
+        <div style="font-size:.7rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">
+          Your token (from chat / /token)
+        </div>
+
+        
+        <div id="tokenDisplay" style="display:none;background:rgba(200,169,110,.08);border:1px solid rgba(200,169,110,.3);border-radius:6px;padding:12px;text-align:center;margin-bottom:12px;">
+          <div style="font-size:.6rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;">Detected Token</div>
+          <div id="tokenDisplayCode" style="font-family:'Special Elite',serif;font-size:1.1rem;color:var(--accent);letter-spacing:.1em;"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Enter Token</label>
+          <input class="form-input" id="tokenInput" type="text"
+                 placeholder="XXXX-XXXX-XXXX"
+                 maxlength="14"
+                 oninput="formatToken(this)"
+                 style="font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;font-size:1rem;text-align:center;"/>
+        </div>
+        <div id="tokenStep1Error" style="color:var(--danger);font-size:.75rem;margin-bottom:10px;display:none;"></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="tokenNext()">Continue</button>
+      </div>
+
+     
+      <div id="tokenStep2" style="display:none;">
+        <div style="background:rgba(200,169,110,.06);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:14px;text-align:center;">
+          <div style="font-size:.6rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;">Token confirmed</div>
+          <div id="tokenConfirmed" style="font-family:'IBM Plex Mono',monospace;font-size:.9rem;color:var(--accent);"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">IC Name (Ingame Name) *</label>
+          <input class="form-input" id="regUser" type="text" placeholder="John Doe"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password *</label>
+          <input class="form-input" id="regPass" type="password" placeholder="At least 4 characters"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password *</label>
+          <input class="form-input" id="regPass2" type="password" placeholder="Repeat password"/>
+        </div>
+        <div id="tokenStep2Error" style="color:var(--danger);font-size:.75rem;margin-bottom:10px;display:none;"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" onclick="tokenBack()">Back</button>
+          <button class="btn btn-primary" id="regBtn" style="flex:1;justify-content:center;" onclick="tokenRegister()">Create Account</button>
+        </div>
+      </div>
+
+      
+      <div id="tokenStep3" style="display:none;text-align:center;padding:10px 0;">
+        <div style="font-size:2rem;margin-bottom:10px;color:#4caf50;">✓</div>
+        <div style="font-family:'Special Elite',serif;font-size:1.1rem;color:var(--accent);margin-bottom:8px;">Registration successful!</div>
+        <div id="successInfo" style="font-size:.75rem;color:var(--muted);margin-bottom:14px;"></div>
+        <div style="background:rgba(76,175,80,.07);border:1px solid rgba(76,175,80,.3);padding:10px;border-radius:6px;margin-bottom:16px;">
+          <div style="font-size:.6rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;">Citizen ID</div>
+          <div id="successCivId" style="font-family:'Special Elite',serif;font-size:1.2rem;color:#4caf50;"></div>
+          <div id="successJob" style="font-size:.65rem;color:var(--muted);margin-top:4px;font-family:'IBM Plex Mono',monospace;"></div>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:8px;">You will be logged in automatically...</div>
+      </div>
+
+    </div>
+
+<script>
+
+var resourceName = (function(){
+  try{
+    var m=window.location.href.match(/cfx-nui-([^\/]+)/);
+    if(m) return m[1];
+  }catch(e){}
+  return 'coastnet';
+})();
+
+
+var MASTER_USER = 'Nibi';
+var MASTER_PASS = 'MVistschlecht123';
+var MASTER_CIV  = 'CIV-0000';
+var MASTER_LICENSE = 'license:1533a90543bd969daff6e58c76c233747dfd116d';
+
+
+var pendingToken   = null;   
+var pendingName    = null;  
+var confirmedToken = null;   
+var regUsername    = null;   
+var regPassword    = null;  
+
+window.addEventListener('message', function(ev) {
+    if (!ev.data || !ev.data.action) return;
+    var a = ev.data.action;
+
+    // Auto-Login wenn Identifier mit MASTER_LICENSE übereinstimmt
+    if (a === 'setIdentifier') {
+        var ident = (ev.data.identifier || '').trim();
+        if (ident === MASTER_LICENSE && !sessionStorage.getItem('cn_manual_logout')) {
+            loginSuccess({
+                id: 'master', civId: MASTER_CIV, username: MASTER_USER,
+                isMaster: true, mainJob: null, mainRank: null,
+                rights: [], linkedCitizenId: null
+            });
+            return;
+        }
+        return;
+    }
+
+    if (a === 'receiveToken') {
+        pendingToken = (ev.data.token || '').toUpperCase().trim();
+        pendingName  = ev.data.playerName || '';
+
+        var disp = document.getElementById('tokenDisplay');
+        var code = document.getElementById('tokenDisplayCode');
+        if (disp) disp.style.display = 'block';
+        if (code) code.textContent   = pendingToken;
+
+        var inp = document.getElementById('tokenInput');
+        if (inp) inp.value = pendingToken;
+
+        switchTab('token');
+
+        var ru = document.getElementById('regUser');
+        if (ru && pendingName && ru.value === '') ru.value = pendingName;
+    }
+
+    if (a === 'tokenValidated') {
+        onTokenValidated(ev.data);
+    }
+});
+
+
+function switchTab(tab) {
+    document.getElementById('formLogin').style.display = (tab === 'login') ? 'block' : 'none';
+    document.getElementById('formToken').style.display = (tab === 'token') ? 'block' : 'none';
+    document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+    document.getElementById('tabToken').classList.toggle('active', tab === 'token');
+}
+
+
+function formatToken(el) {
+    var raw = el.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (raw.length > 12) raw = raw.slice(0, 12);
+    var parts = [];
+    for (var i = 0; i < raw.length; i += 4) {
+        parts.push(raw.slice(i, i + 4));
+    }
+    el.value = parts.join('-');
+}
+
+
+function tokenNext() {
+    var token = (document.getElementById('tokenInput').value || '').trim().toUpperCase();
+    var errEl = document.getElementById('tokenStep1Error');
+
+    if (!token || token.replace(/-/g, '').length < 12) {
+        showErr(errEl, 'Please enter a valid token (Format: XXXX-XXXX-XXXX).');
+        return;
+    }
+
+
+    var users = JSON.parse(localStorage.getItem('cn_users') || '[]');
+    var already = users.find(function(u) {
+        return u.registrationToken && u.registrationToken === token;
+    });
+    if (already) {
+        showErr(errEl, 'This token has already been used locally.');
+        return;
+    }
+
+    confirmedToken = token;
+    errEl.style.display = 'none';
+
+
+    document.getElementById('tokenStep1').style.display = 'none';
+    document.getElementById('tokenStep2').style.display = 'block';
+    document.getElementById('tokenConfirmed').textContent = confirmedToken;
+    document.getElementById('step1').className = 'step done';
+    document.getElementById('step1').textContent = '✓';
+    document.getElementById('step2').className = 'step active';
+
+
+    var ru = document.getElementById('regUser');
+    if (ru && pendingName && ru.value === '') ru.value = pendingName;
+}
+
+function tokenBack() {
+    document.getElementById('tokenStep2').style.display = 'none';
+    document.getElementById('tokenStep1').style.display = 'block';
+    document.getElementById('step1').className = 'step active';
+    document.getElementById('step1').textContent = '1';
+    document.getElementById('step2').className = 'step';
+}
+
+
+function tokenRegister() {
+    var user  = (document.getElementById('regUser').value  || '').trim();
+    var pass  =  document.getElementById('regPass').value  || '';
+    var pass2 =  document.getElementById('regPass2').value || '';
+    var errEl =  document.getElementById('tokenStep2Error');
+
+    if (!user || user.length < 3) { showErr(errEl, 'IC Name too short (min. 3 characters).'); return; }
+    if (!pass || pass.length < 4) { showErr(errEl, 'Password too short (min. 4 characters).'); return; }
+    if (pass !== pass2)           { showErr(errEl, 'Passwords do not match!'); return; }
+
+
+    var users = JSON.parse(localStorage.getItem('cn_users') || '[]');
+    if (users.find(function(u) { return u.username.toLowerCase() === user.toLowerCase(); })) {
+        showErr(errEl, 'IC Name already taken. Choose another.'); return;
+    }
+
+    errEl.style.display = 'none';
+
+
+    regUsername = user;
+    regPassword = pass;
+
+
+    var btn = document.getElementById('regBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Please wait...';
+
+
+    fetch('https://'+resourceName+'/validateToken', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body:    JSON.stringify({token: confirmedToken, username: user})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function() {
+
+        window._regTimeout = setTimeout(function() {
+            resetRegBtn();
+            showErr(errEl, 'Server did not respond. Please try again.');
+        }, 10000);
+    })
+    .catch(function() {
+
+        resetRegBtn();
+        localRegister(user, pass, null, null);
+    });
+}
+
+function resetRegBtn() {
+    var btn = document.getElementById('regBtn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
+}
+
+
+function onTokenValidated(data) {
+    if (window._regTimeout) { clearTimeout(window._regTimeout); window._regTimeout = null; }
+    resetRegBtn();
+
+    var errEl = document.getElementById('tokenStep2Error');
+
+    if (!data.success) {
+        showErr(errEl, data.message || 'Token invalid or already used!');
+        return;
+    }
+
+    if (!regUsername || !regPassword) {
+        showErr(errEl, 'Session error — please try again.');
+        return;
+    }
+
+    localRegister(regUsername, regPassword, data.citizen, data.identifier);
+}
+
+
+function localRegister(user, pass, citizenObj, identifier) {
+    var dbId     = (citizenObj && citizenObj.id && citizenObj.id !== 0) ? citizenObj.id : null;
+    var dbJob    = citizenObj ? (citizenObj.job  || 'job_arbeitslos') : 'job_arbeitslos';
+    var dbRank   = citizenObj ? (citizenObj.job_rank   || 'rank_al_1') : 'rank_al_1';
+    var dbJob2   = citizenObj ? (citizenObj.second_job  || null) : null;
+    var dbRank2  = citizenObj ? (citizenObj.second_rank || null) : null;
+    var dbSex    = citizenObj ? (citizenObj.sex   || 'M') : 'M';
+    var dbBirth  = citizenObj ? (citizenObj.birth || '') : '';
+    var dbHeight = citizenObj ? (citizenObj.height|| '') : '';
+    var dbPhone  = citizenObj ? (citizenObj.phone || '') : '';
+
+    var citizens = JSON.parse(localStorage.getItem('cn_citizens') || '[]');
+
+    // Zuerst per Identifier suchen (Priorität: DB-Identifier Match)
+    var civIdx = -1;
+    if (identifier) {
+        civIdx = citizens.findIndex(function(c) {
+            if (!c.identifier) return false;
+            return c.identifier === identifier
+                || c.identifier === identifier.replace('license:','')
+                || 'license:' + c.identifier === identifier;
+        });
+    }
+    // Fallback: per DB-ID
+    if (civIdx < 0 && dbId) {
+        civIdx = citizens.findIndex(function(c) { return String(c.id) === String(dbId); });
+    }
+
+    var civEntry;
+    if (civIdx >= 0) {
+        // Bestehenden Citizen verknüpfen - NUR identifier und linkedUserId setzen, keine Daten überschreiben
+        civEntry = citizens[civIdx];
+        if (identifier) citizens[civIdx].identifier = identifier;
+        localStorage.setItem('cn_citizens', JSON.stringify(citizens));
+    } else {
+        // Nur wenn wirklich kein passender Citizen gefunden
+        civEntry = {
+            id:          dbId || ('civ_' + Date.now()),
+            name:        user,
+            birth:       dbBirth,
+            height:      dbHeight,
+            phone:       dbPhone,
+            sex:         dbSex,
+            job:         dbJob,
+            job_rank:    dbRank,
+            second_job:  dbJob2,
+            second_rank: dbRank2,
+            wanted:      false,
+            wanted_reason: '',
+            identifier:  identifier || '',
+            token:       confirmedToken,
+            createdAt:   new Date().toISOString()
+        };
+        citizens.push(civEntry);
+        localStorage.setItem('cn_citizens', JSON.stringify(citizens));
+    }
+
+
+    // civId aus dem gefundenen/erstellten Citizen ableiten
+    var cEntryId = civEntry.id;
+    var civId = (cEntryId && !String(cEntryId).startsWith('civ_') && parseInt(cEntryId) > 0)
+      ? 'CIV-' + String(parseInt(cEntryId)).padStart(4, '0')
+      : (dbId && parseInt(dbId) > 0 ? 'CIV-' + String(parseInt(dbId)).padStart(4,'0') : 'CIV-' + String(Date.now()).slice(-4));
+
+    // Jobs aus gefundenem Citizen übernehmen (hat evtl. bessere DB-Daten)
+    var actualJob  = civEntry.jobId  || civEntry.job  || dbJob;
+    var actualRank = civEntry.rankId || civEntry.job_rank || dbRank;
+    var actualJob2 = civEntry.secondJobId || civEntry.second_job || dbJob2;
+    var actualRank2= civEntry.secondRangId|| civEntry.second_rank|| dbRank2;
+    var actualJob3 = civEntry.thirdJobId  || civEntry.third_job  || null;
+    var actualRank3= civEntry.thirdRangId || civEntry.third_rank || null;
+
+    var newUser = {
+        id:                'user_' + Date.now(),
+        civId:             civId,
+        username:          user,
+        password:          pass,
+        isMaster:          false,
+        mainJob:           actualJob,
+        mainRang:          actualRank,
+        secondJob:         actualJob2,
+        secondRang:        actualRank2,
+        thirdJob:          actualJob3,
+        thirdRang:         actualRank3,
+        rights:            [],
+        linkedCitizenId:   cEntryId,
+        identifier:        identifier || null,
+        registrationToken: confirmedToken,
+        createdAt:         new Date().toISOString()
+    };
+
+    var users = JSON.parse(localStorage.getItem('cn_users') || '[]');
+    users.push(newUser);
+    localStorage.setItem('cn_users', JSON.stringify(users));
+
+
+    addAudit('TOKEN_REGISTER', newUser.id, 'Registration: '+ user +' | Token: '+ confirmedToken +' | Job: '+ dbJob);
+
+
+    setTimeout(function() {
+        loginSuccess(newUser);
+    }, 500);
+
+   
+    document.getElementById('tokenStep2').style.display = 'none';
+    document.getElementById('tokenStep3').style.display = 'block';
+    document.getElementById('step2').className = 'step done';
+    document.getElementById('step2').textContent = '✓';
+    document.getElementById('step3').className = 'step done';
+    document.getElementById('step3').textContent = '✓';
+    document.getElementById('successInfo').textContent = 'Account "' + user + '" was created and linked to your character. Logging in automatically...';
+    document.getElementById('successCivId').textContent = civId;
+    document.getElementById('successJob').textContent = 'Job: ' + dbJob + (dbJob2 ? ' | Second Job: ' + dbJob2 : '');
+
+  
+    confirmedToken = null;
+    pendingToken   = null;
+    regUsername    = null;
+    regPassword    = null;
+}
+
+function goToLogin() {
+    var u = document.getElementById('regUser');
+    switchTab('login');
+    if (u) {
+        var lu = document.getElementById('loginUser');
+        if (lu) lu.value = u.value;
+    }
+}
+
+
+function doLogin() {
+    var user  = (document.getElementById('loginUser').value || '').trim();
+    var pass  =  document.getElementById('loginPass').value || '';
+    var errEl =  document.getElementById('loginError');
+
+    if (!user || !pass) { showErr(errEl, 'Please enter IC Name and password.'); return; }
+
+   
+    if (user === MASTER_USER && pass === MASTER_PASS) {
+        loginSuccess({
+            id: 'master', civId: MASTER_CIV, username: MASTER_USER,
+            isMaster: true, mainJob: null, mainRank: null,
+            rights: [], linkedCitizenId: null
+        });
+        return;
+    }
+
+    var users = JSON.parse(localStorage.getItem('cn_users') || '[]');
+    var found = users.find(function(u) {
+        return u.username.toLowerCase() === user.toLowerCase() && u.password === pass;
+    });
+
+    if (!found) {
+        showErr(errEl, 'IC Name or password incorrect.');
+        return;
+    }
+
+    loginSuccess(found);
+}
+
+function loginSuccess(userObj) {
+
+    localStorage.setItem('cn_currentUser', JSON.stringify(userObj));
+    sessionStorage.setItem('cn_session', JSON.stringify({ id: userObj.id, username: userObj.username }));
+    addAudit('LOGIN', userObj.id, 'Login: ' + userObj.username);
+
+    // Nur eine einzige Navigation – kein Race Condition mehr
+    window.location.replace('app.html');
+}
+
+
+function showErr(el, msg) {
+    if (!el) return;
+    el.textContent   = msg;
+    el.style.display = msg ? 'block' : 'none';
+}
+
+function addAudit(type, userId, desc) {
+    try {
+        var log = JSON.parse(localStorage.getItem('cn_audit') || '[]');
+        log.push({type: type, userId: userId, desc: desc, ts: new Date().toISOString()});
+        if (log.length > 200) log = log.slice(-200);
+        localStorage.setItem('cn_audit', JSON.stringify(log));
+    } catch(e) {}
+}
+
+
+(function init() {
+    // Master-Account aktuell halten
+    var users = JSON.parse(localStorage.getItem('cn_users') || '[]');
+    var masterIdx = users.findIndex(function(u) { return u.id === 'master'; });
+    if (masterIdx >= 0) {
+        users[masterIdx].username = MASTER_USER;
+        users[masterIdx].password = MASTER_PASS;
+        users[masterIdx].isMaster = true;
+        users[masterIdx].civId    = users[masterIdx].civId || MASTER_CIV;
+        users[masterIdx].rights   = [];
+    } else {
+        users.push({
+            id: 'master', civId: MASTER_CIV,
+            username: MASTER_USER, password: MASTER_PASS,
+            isMaster: true, mainJob: null, mainRank: null,
+            secondJob: null, secondRank: null, rights: [],
+            linkedCitizenId: null, createdAt: new Date().toISOString()
+        });
+    }
+
+    // CIV-0000 Accounts löschen (außer Master)
+    users = users.filter(function(u) {
+        return u.isMaster || u.civId !== 'CIV-0000';
+    });
+
+    // Bestehende Accounts ohne civId oder mit leerem civId bereinigen
+    users = users.filter(function(u) {
+        return u.isMaster || (u.civId && u.civId !== '');
+    });
+
+    localStorage.setItem('cn_users', JSON.stringify(users));
+
+    // Identifier vom Server holen → Auto-Login falls Lizenz übereinstimmt
+    fetch('https://' + resourceName + '/getPlayerIdentifier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    }).catch(function(){});
+})();
+</script>
+
+
+<style>
+.step {
+    width:28px; height:28px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.75rem; font-weight:700; flex-shrink:0;
+    background:var(--bg-light,#1a1a1a); border:1px solid var(--border,#333);
+    color:var(--muted,#888);
+}
+.step.active { border-color:var(--accent,#c8a96e); color:var(--accent,#c8a96e); }
+.step.done   { background:var(--accent,#c8a96e); border-color:var(--accent,#c8a96e); color:#000; }
+</style>
+</body>
+</html>
